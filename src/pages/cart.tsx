@@ -133,11 +133,11 @@ export default function CartPage() {
                             updateCartQuantity(prev, product.id, quantity - 1),
                           )
                         }
-                        className="w-7 h-7 rounded-md border border-gray-300 text-sm font-bold text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-700"
+                        className="w-9 h-9 rounded-lg border border-gray-300 text-sm font-bold text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-700"
                       >
                         -
                       </button>
-                      <span className="w-5 text-center text-xs font-bold text-gray-900">
+                      <span className="w-6 text-center text-xs font-bold text-gray-900">
                         {quantity}
                       </span>
                       <button
@@ -149,7 +149,7 @@ export default function CartPage() {
                             updateCartQuantity(prev, product.id, quantity + 1),
                           )
                         }
-                        className="w-7 h-7 rounded-md border border-gray-300 text-sm font-bold text-gray-700 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-brand-700"
+                        className="w-9 h-9 rounded-lg border border-gray-300 text-sm font-bold text-gray-700 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-brand-700"
                       >
                         +
                       </button>
@@ -159,7 +159,7 @@ export default function CartPage() {
                         onClick={() =>
                           setItems((prev) => removeCartItem(prev, product.id))
                         }
-                        className="ml-1 text-xs font-medium text-red-600 hover:underline focus:outline-none focus:ring-2 focus:ring-red-600 rounded px-1"
+                        className="ml-1 min-h-9 px-2 text-xs font-medium text-red-600 hover:underline focus:outline-none focus:ring-2 focus:ring-red-600 rounded"
                       >
                         Xóa
                       </button>

@@ -15,7 +15,13 @@ interface AuthSessionResponse {
   };
 }
 
+let inMemoryAuthUser: AuthUser | null = null;
 let pendingAuthPromise: Promise<AuthUser> | null = null;
+
+export function clearAuthSession(): void {
+  inMemoryAuthUser = null;
+  setAuthToken(null);
+}
 
 async function tryGetZaloSdkToken(): Promise<string | null> {
   try {
@@ -25,7 +31,11 @@ async function tryGetZaloSdkToken(): Promise<string | null> {
         setTimeout(() => reject(new Error("zmp timeout")), 1500),
       ),
     ]);
-    if (typeof token === "string" && token.trim() !== "" && token !== "DEFAULT_ACCESS_TOKEN") {
+    if (
+      typeof token === "string" &&
+      token.trim() !== "" &&
+      token !== "DEFAULT_ACCESS_TOKEN"
+    ) {
       return token.trim();
     }
     return null;
@@ -41,6 +51,7 @@ export async function loginWithZaloToken(
     access_token: accessToken,
   });
   setAuthToken(response.data.token);
+  inMemoryAuthUser = response.data.user;
   return response.data.user;
 }
 
@@ -51,20 +62,26 @@ export async function loginWithDemoAccount(
     demo_key: demoKey,
   });
   setAuthToken(response.data.token);
+  inMemoryAuthUser = response.data.user;
   return response.data.user;
 }
 
 export async function fetchCurrentUser(): Promise<AuthUser> {
   const response = await apiGet<{ data: AuthUser }>("/auth/me");
+  inMemoryAuthUser = response.data;
   return response.data;
 }
 
 export async function ensureAuthenticated(): Promise<AuthUser> {
+  if (getAuthToken() && inMemoryAuthUser) {
+    return inMemoryAuthUser;
+  }
+
   if (getAuthToken()) {
     try {
       return await fetchCurrentUser();
     } catch {
-      setAuthToken(null);
+      clearAuthSession();
     }
   }
 

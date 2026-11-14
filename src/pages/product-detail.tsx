@@ -139,7 +139,7 @@ export default function ProductDetailPage() {
                         onClick={() => setQuantity((q) => Math.max(1, q - 1))}
                         disabled={quantity <= 1}
                         aria-label="Giảm số lượng"
-                        className="w-8 h-8 rounded-lg border border-gray-300 text-base font-bold text-gray-700 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-brand-700"
+                        className="w-10 h-10 rounded-lg border border-gray-300 text-base font-bold text-gray-700 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-brand-700"
                       >
                         -
                       </button>
@@ -158,7 +158,7 @@ export default function ProductDetailPage() {
                         }
                         disabled={quantity >= MAX_ITEM_QUANTITY}
                         aria-label="Tăng số lượng"
-                        className="w-8 h-8 rounded-lg border border-gray-300 text-base font-bold text-gray-700 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-brand-700"
+                        className="w-10 h-10 rounded-lg border border-gray-300 text-base font-bold text-gray-700 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-brand-700"
                       >
                         +
                       </button>
