@@ -17,6 +17,7 @@
   "scripts": {
     "login": "zmp login",
     "start": "zmp start",
+    "dev": "vite . --port 3000 --strictPort",
     "build": "vite build . --outDir www --emptyOutDir",
     "test": "vitest run",
     "deploy": "zmp deploy"
