@@ -1,3 +1,14 @@
+:root {
+  --zmp-primary-color: #2e7d32;
+  --zmp-primary-color-dark: #236b27;
+  --zmp-primary-color-light: #eef8eb;
+}
+
+body {
+  background-color: #f6f8f5;
+  color: #111827;
+}
+
 .page {
   padding: 16px 16px 96px 16px;
 }
@@ -11,4 +22,22 @@
 
 .zaui-list-item {
   cursor: pointer;
+}
+
+.zaui-btn-primary {
+  background-color: #2e7d32 !important;
+}
+
+.zaui-btn-primary:hover,
+.zaui-btn-primary:active {
+  background-color: #236b27 !important;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

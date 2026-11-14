@@ -1,6 +1,6 @@
 {
-  "cwd": "/Users/lap15182-local/Documents/zmp-blank-templates",
-  "name": "zmp-blank-templates",
+  "cwd": ".",
+  "name": "Smart Canteen",
   "framework": "react-typescript",
   "cssPreProcessor": "scss",
   "includeTailwind": true,
@@ -9,8 +9,8 @@
   "newProject": true,
   "template": "single-view",
   "theming": {
-    "customColor": false,
-    "color": "#007aff",
+    "customColor": true,
+    "color": "#2E7D32",
     "darkTheme": false,
     "iconFonts": true,
     "fillBars": false,

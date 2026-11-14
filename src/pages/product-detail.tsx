@@ -5,6 +5,7 @@ import { ErrorState, LoadingState } from "@/components/state-views";
 import { fetchProduct } from "@/features/menu/api";
 import { ApiError } from "@/lib/api-client";
 import { formatVnd } from "@/lib/format";
+import canteenLogo from "@/static/canteen-logo.jpg";
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -24,13 +25,13 @@ export default function ProductDetailPage() {
       productQuery.error.status === 404);
 
   return (
-    <Page className="bg-gray-50 min-h-screen">
+    <Page className="bg-surface-muted min-h-screen">
       <Header title="Chi tiết món" onBackClick={() => navigate("/")} />
       <main className="p-4 max-w-2xl mx-auto">
         {isNotFound ? (
           <Box
             role="status"
-            className="bg-white border border-gray-200 rounded-lg p-6 text-center space-y-4"
+            className="bg-white border border-gray-200 rounded-xl p-6 text-center space-y-4"
           >
             <Text.Title size="small">Món không tồn tại</Text.Title>
             <Text size="small" className="text-gray-600">
@@ -53,20 +54,21 @@ export default function ProductDetailPage() {
                 ? productQuery.error.message
                 : "Không thể tải chi tiết món."
             }
+            isRetrying={productQuery.isRefetching}
             onRetry={() => void productQuery.refetch()}
           />
         ) : productQuery.data ? (
-          <article className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-            <div className="w-full h-48 bg-gray-100 border-b border-gray-200 flex items-center justify-center text-gray-500 font-semibold">
-              {productQuery.data.image_url ? (
-                <img
-                  src={productQuery.data.image_url}
-                  alt={productQuery.data.name}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <span>SMART CANTEEN</span>
-              )}
+          <article className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <div className="w-full h-48 bg-brand-50 border-b border-brand-100 flex items-center justify-center overflow-hidden">
+              <img
+                src={productQuery.data.image_url || canteenLogo}
+                alt={productQuery.data.name}
+                className={`w-full h-full ${
+                  productQuery.data.image_url
+                    ? "object-cover"
+                    : "object-contain p-6"
+                }`}
+              />
             </div>
             <div className="p-4 space-y-3">
               <div className="flex items-start justify-between gap-3">
@@ -76,7 +78,7 @@ export default function ProductDetailPage() {
                 <span
                   className={`shrink-0 inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium ${
                     productQuery.data.is_available
-                      ? "bg-green-100 text-green-800"
+                      ? "bg-brand-100 text-brand-900"
                       : "bg-gray-200 text-gray-700"
                   }`}
                 >
@@ -84,7 +86,7 @@ export default function ProductDetailPage() {
                 </span>
               </div>
 
-              <p className="text-xl font-bold text-blue-700">
+              <p className="text-xl font-bold text-brand-700">
                 {formatVnd(productQuery.data.price)}
               </p>
 
