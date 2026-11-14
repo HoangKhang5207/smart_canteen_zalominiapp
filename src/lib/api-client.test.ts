@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApiError, apiGet } from "./api-client";
+import { ApiError, apiGet, apiPost, setAuthToken } from "./api-client";
 import { fetchCategories, fetchProduct, fetchProducts } from "../features/menu/api";
 
-describe("apiGet & menu api", () => {
+describe("apiGet, apiPost & menu api", () => {
   afterEach(() => {
+    setAuthToken(null);
     vi.restoreAllMocks();
   });
 
@@ -21,6 +22,32 @@ describe("apiGet & menu api", () => {
     const [calledUrl, options] = fetchMock.mock.calls[0];
     expect(calledUrl).toBe("http://localhost:8000/api/v1/products?category_id=2");
     expect(options.headers).toMatchObject({ Accept: "application/json" });
+  });
+
+  it("attaches Bearer token and custom headers on apiPost", async () => {
+    setAuthToken("sanctum-token-123");
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 201,
+      json: async () => ({ data: { id: 10, code: "SC-261114-000010" } }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await apiPost<{ data: { id: number; code: string } }>(
+      "/orders",
+      { items: [{ product_id: 1, quantity: 2 }] },
+      { headers: { "Idempotency-Key": "idem-abc" } },
+    );
+
+    expect(res.data.code).toBe("SC-261114-000010");
+    const [, options] = fetchMock.mock.calls[0];
+    expect(options.method).toBe("POST");
+    expect(options.headers).toMatchObject({
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      Authorization: "Bearer sanctum-token-123",
+      "Idempotency-Key": "idem-abc",
+    });
   });
 
   it("unwraps data for categories and single product", async () => {
