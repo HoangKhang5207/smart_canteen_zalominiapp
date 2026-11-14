@@ -1,3 +1,4 @@
+import path from "node:path";
 import { defineConfig } from "vite";
 import zaloMiniApp from "zmp-vite-plugin";
 import react from "@vitejs/plugin-react";
@@ -13,7 +14,7 @@ export default () => {
     },
     resolve: {
       alias: {
-        "@": "/src",
+        "@": path.resolve(__dirname, "./src"),
       },
     },
   });
