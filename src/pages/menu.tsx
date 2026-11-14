@@ -1,8 +1,13 @@
 import React, { useEffect, useState } from "react";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useQuery } from "@tanstack/react-query";
-import { Box, Header, Input, Page, Text, useNavigate } from "zmp-ui";
+import { Box, Header, Input, Page, Text, useNavigate, useSnackbar } from "zmp-ui";
+import { BottomNav } from "@/components/bottom-nav";
 import { BrandLogo } from "@/components/brand-logo";
 import { EmptyState, ErrorState, LoadingState } from "@/components/state-views";
+import { currentUserAtom } from "@/features/auth/store";
+import { addCartItem } from "@/features/cart/cart-logic";
+import { cartItemsAtom, cartTotalsAtom } from "@/features/cart/store";
 import { fetchCategories, fetchProducts } from "@/features/menu/api";
 import type { Category, Product } from "@/features/menu/types";
 import { formatVnd } from "@/lib/format";
@@ -70,16 +75,18 @@ function CategoryFilterBar({
 function ProductCard({
   product,
   onOpen,
+  onAdd,
 }: {
   product: Product;
   onOpen: (id: number) => void;
+  onAdd: (product: Product) => void;
 }) {
   return (
-    <li>
+    <li className="bg-white border border-gray-200 rounded-xl p-3 flex items-start gap-3 hover:border-brand-500 transition-colors">
       <button
         type="button"
         onClick={() => onOpen(product.id)}
-        className="w-full text-left bg-white border border-gray-200 rounded-xl p-3 flex items-start gap-3 hover:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-700 transition-colors"
+        className="flex-1 min-w-0 text-left flex items-start gap-3 focus:outline-none focus:ring-2 focus:ring-brand-700 rounded-lg"
       >
         <div className="w-16 h-16 rounded-lg bg-brand-50 border border-brand-100 shrink-0 flex items-center justify-center overflow-hidden">
           <img
@@ -111,12 +118,28 @@ function ProductCard({
           </p>
         </div>
       </button>
+
+      {product.is_available ? (
+        <button
+          type="button"
+          onClick={() => onAdd(product)}
+          aria-label={`Thêm ${product.name} vào giỏ hàng`}
+          className="shrink-0 self-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-700 text-white hover:bg-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-700 transition-colors"
+        >
+          + Thêm
+        </button>
+      ) : null}
     </li>
   );
 }
 
 export default function MenuPage() {
   const navigate = useNavigate();
+  const { openSnackbar } = useSnackbar();
+  const currentUser = useAtomValue(currentUserAtom);
+  const setCartItems = useSetAtom(cartItemsAtom);
+  const { totalQuantity, estimatedAmount } = useAtomValue(cartTotalsAtom);
+
   const [selectedCategoryId, setSelectedCategoryId] = useState<
     number | undefined
   >(undefined);
@@ -156,8 +179,16 @@ export default function MenuPage() {
     }
   };
 
+  const handleAddProduct = (product: Product) => {
+    setCartItems((prev) => addCartItem(prev, product, 1));
+    openSnackbar({
+      text: `Đã thêm "${product.name}" vào giỏ hàng`,
+      duration: 1800,
+    });
+  };
+
   return (
-    <Page className="bg-surface-muted min-h-screen">
+    <Page className="bg-surface-muted min-h-screen pb-28">
       <Header title="Smart Canteen — Thực đơn" showBackIcon={false} />
       <main className="p-4 space-y-4 max-w-2xl mx-auto">
         <section
@@ -165,6 +196,11 @@ export default function MenuPage() {
           className="bg-white border border-brand-100 rounded-xl p-3 flex items-center justify-between gap-3"
         >
           <BrandLogo size="md" />
+          {currentUser ? (
+            <span className="shrink-0 text-xs font-medium px-2.5 py-1 rounded-full bg-brand-50 text-brand-900 border border-brand-100">
+              {currentUser.name}
+            </span>
+          ) : null}
         </section>
 
         <Box className="space-y-3">
@@ -213,12 +249,37 @@ export default function MenuPage() {
                   key={product.id}
                   product={product}
                   onOpen={(id) => navigate(`/products/${id}`)}
+                  onAdd={handleAddProduct}
                 />
               ))}
             </ul>
           </section>
         )}
       </main>
+
+      {totalQuantity > 0 ? (
+        <div className="fixed bottom-16 inset-x-0 z-20 px-4">
+          <div className="max-w-2xl mx-auto bg-brand-900 text-white rounded-xl p-3 shadow-md flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs text-brand-100">
+                Giỏ hàng ({totalQuantity} món)
+              </p>
+              <p className="text-sm font-bold truncate">
+                Tạm tính: {formatVnd(estimatedAmount)}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate("/cart")}
+              className="shrink-0 px-4 py-2 rounded-lg text-xs font-bold bg-brand-500 text-gray-950 hover:bg-brand-200 focus:outline-none focus:ring-2 focus:ring-white transition-colors"
+            >
+              Xem giỏ & Đặt món
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      <BottomNav />
     </Page>
   );
 }
