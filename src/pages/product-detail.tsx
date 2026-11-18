@@ -59,7 +59,7 @@ export default function ProductDetailPage() {
   return (
     <Page className="bg-surface-muted min-h-screen pb-24">
       <Header title="Chi tiết món" onBackClick={() => navigate("/")} />
-      <main className="p-4 max-w-2xl mx-auto">
+      <main className="p-11 max-w-2xl mx-auto">
         {isNotFound ? (
           <Box
             role="status"
@@ -102,11 +102,10 @@ export default function ProductDetailPage() {
                   {productQuery.data.name}
                 </h1>
                 <span
-                  className={`shrink-0 inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium ${
-                    productQuery.data.is_available
-                      ? "bg-brand-100 text-brand-900"
-                      : "bg-gray-200 text-gray-700"
-                  }`}
+                  className={`shrink-0 inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium ${productQuery.data.is_available
+                    ? "bg-brand-100 text-brand-900"
+                    : "bg-gray-200 text-gray-700"
+                    }`}
                 >
                   {productQuery.data.is_available ? "Còn món" : "Hết món"}
                 </span>

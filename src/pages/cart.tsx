@@ -86,7 +86,7 @@ export default function CartPage() {
   return (
     <Page className="bg-surface-muted min-h-screen pb-24">
       <Header title="Giỏ hàng & Đặt món" onBackClick={() => navigate("/")} />
-      <main className="p-4 space-y-4 max-w-2xl mx-auto">
+      <main className="p-11 space-y-11 max-w-2xl mx-auto">
         {items.length === 0 ? (
           <EmptyState
             message="Giỏ hàng của bạn đang trống. Hãy chọn món từ thực đơn nhé!"

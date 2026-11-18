@@ -4,14 +4,17 @@ import { useQuery } from "@tanstack/react-query";
 import { Box, Header, Input, Page, Text, useNavigate, useSnackbar } from "zmp-ui";
 import { BottomNav } from "@/components/bottom-nav";
 import { BrandLogo } from "@/components/brand-logo";
+import { PaginationBar } from "@/components/pagination-bar";
 import { ProductImage } from "@/components/product-image";
 import { EmptyState, ErrorState, LoadingState } from "@/components/state-views";
 import { currentUserAtom } from "@/features/auth/store";
 import { addCartItem } from "@/features/cart/cart-logic";
 import { cartItemsAtom, cartTotalsAtom } from "@/features/cart/store";
-import { fetchCategories, fetchProducts } from "@/features/menu/api";
+import { fetchCategories, fetchPaginatedProducts } from "@/features/menu/api";
 import type { Category, Product } from "@/features/menu/types";
 import { formatVnd } from "@/lib/format";
+
+const MENU_PER_PAGE = 8;
 
 function useDebouncedValue<T>(value: T, delayMs: number): T {
   const [debounced, setDebounced] = useState<T>(value);
@@ -42,11 +45,10 @@ function CategoryFilterBar({
         type="button"
         onClick={() => onSelect(undefined)}
         aria-pressed={selectedId === undefined}
-        className={`shrink-0 px-3.5 py-1.5 rounded-full text-sm font-medium border transition-colors focus:outline-none focus:ring-2 focus:ring-brand-700 ${
-          selectedId === undefined
-            ? "bg-brand-700 text-white border-brand-700"
-            : "bg-white text-gray-700 border-gray-300 hover:border-brand-500"
-        }`}
+        className={`shrink-0 px-3.5 py-1.5 rounded-full text-sm font-medium border transition-colors focus:outline-none focus:ring-2 focus:ring-brand-700 ${selectedId === undefined
+          ? "bg-brand-700 text-white border-brand-700"
+          : "bg-white text-gray-700 border-gray-300 hover:border-brand-500"
+          }`}
       >
         Tất cả
       </button>
@@ -58,11 +60,10 @@ function CategoryFilterBar({
             type="button"
             onClick={() => onSelect(cat.id)}
             aria-pressed={active}
-            className={`shrink-0 px-3.5 py-1.5 rounded-full text-sm font-medium border transition-colors focus:outline-none focus:ring-2 focus:ring-brand-700 ${
-              active
-                ? "bg-brand-700 text-white border-brand-700"
-                : "bg-white text-gray-700 border-gray-300 hover:border-brand-500"
-            }`}
+            className={`shrink-0 px-3.5 py-1.5 rounded-full text-sm font-medium border transition-colors focus:outline-none focus:ring-2 focus:ring-brand-700 ${active
+              ? "bg-brand-700 text-white border-brand-700"
+              : "bg-white text-gray-700 border-gray-300 hover:border-brand-500"
+              }`}
           >
             {cat.name}
           </button>
@@ -140,7 +141,13 @@ export default function MenuPage() {
     number | undefined
   >(undefined);
   const [searchInput, setSearchInput] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const debouncedSearch = useDebouncedValue(searchInput, 300);
+  const normalizedSearch = debouncedSearch.trim().slice(0, 100);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedCategoryId, normalizedSearch]);
 
   const categoriesQuery = useQuery({
     queryKey: ["categories"],
@@ -152,19 +159,30 @@ export default function MenuPage() {
       "products",
       {
         categoryId: selectedCategoryId,
-        search: debouncedSearch.trim().slice(0, 100),
+        search: normalizedSearch,
+        page: currentPage,
+        perPage: MENU_PER_PAGE,
       },
     ],
     queryFn: () =>
-      fetchProducts({
+      fetchPaginatedProducts({
         categoryId: selectedCategoryId,
-        search: debouncedSearch.trim().slice(0, 100),
+        search: normalizedSearch,
+        page: currentPage,
+        perPage: MENU_PER_PAGE,
       }),
   });
 
   const isLoading = categoriesQuery.isLoading || productsQuery.isLoading;
   const isRetrying = categoriesQuery.isRefetching || productsQuery.isRefetching;
   const error = categoriesQuery.error || productsQuery.error;
+  const products = productsQuery.data?.data ?? [];
+  const paginationMeta = productsQuery.data?.meta;
+
+  const handleSelectCategory = (categoryId: number | undefined) => {
+    setSelectedCategoryId(categoryId);
+    setCurrentPage(1);
+  };
 
   const handleRetry = () => {
     if (categoriesQuery.isError) {
@@ -186,7 +204,7 @@ export default function MenuPage() {
   return (
     <Page className="bg-surface-muted min-h-screen pb-28">
       <Header title="Smart Canteen — Thực đơn" showBackIcon={false} />
-      <main className="p-4 space-y-4 max-w-2xl mx-auto">
+      <main className="p-11 space-y-11 max-w-2xl mx-auto">
         <section
           aria-label="Giới thiệu Smart Canteen"
           className="bg-white border border-brand-100 rounded-xl p-3 flex items-center justify-between gap-3"
@@ -215,7 +233,7 @@ export default function MenuPage() {
             <CategoryFilterBar
               categories={categoriesQuery.data}
               selectedId={selectedCategoryId}
-              onSelect={setSelectedCategoryId}
+              onSelect={handleSelectCategory}
             />
           ) : null}
         </Box>
@@ -232,15 +250,17 @@ export default function MenuPage() {
             isRetrying={isRetrying}
             onRetry={handleRetry}
           />
-        ) : !productsQuery.data || productsQuery.data.length === 0 ? (
+        ) : products.length === 0 ? (
           <EmptyState message="Không tìm thấy món phù hợp" />
         ) : (
-          <section aria-label="Danh sách món ăn">
-            <Text size="xSmall" className="text-gray-500 mb-2 block">
-              Hiển thị {productsQuery.data.length} món
+          <section aria-label="Danh sách món ăn" className="space-y-3">
+            <Text size="xSmall" className="text-gray-500 block">
+              Hiển thị {paginationMeta?.from ?? 1}–
+              {paginationMeta?.to ?? products.length} trong tổng số{" "}
+              {paginationMeta?.total ?? products.length} món
             </Text>
             <ul className="space-y-3">
-              {productsQuery.data.map((product) => (
+              {products.map((product) => (
                 <ProductCard
                   key={product.id}
                   product={product}
@@ -249,6 +269,14 @@ export default function MenuPage() {
                 />
               ))}
             </ul>
+            {paginationMeta ? (
+              <PaginationBar
+                meta={paginationMeta}
+                onPageChange={setCurrentPage}
+                itemLabel="món"
+                disabled={productsQuery.isFetching}
+              />
+            ) : null}
           </section>
         )}
       </main>

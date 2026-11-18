@@ -1,9 +1,15 @@
+import {
+  type PaginatedResult,
+  type PaginationMeta,
+  normalizePaginatedResult,
+} from "@/components/pagination-bar";
 import { ensureAuthenticated } from "@/features/auth/api";
 import { apiGet, apiPost } from "@/lib/api-client";
 import type { Order } from "./types";
 
 interface DataEnvelope<T> {
   data: T;
+  meta?: Partial<PaginationMeta>;
 }
 
 export interface CreateOrderInput {
@@ -24,10 +30,26 @@ export async function createOrder(
   return response.data;
 }
 
-export async function fetchMyOrders(): Promise<Order[]> {
+export async function fetchPaginatedMyOrders(query?: {
+  page?: number;
+  perPage?: number;
+}): Promise<PaginatedResult<Order>> {
   await ensureAuthenticated();
-  const response = await apiGet<DataEnvelope<Order[]>>("/orders");
-  return response.data;
+  const response = await apiGet<DataEnvelope<Order[]>>("/orders", {
+    page: query?.page,
+    per_page: query?.perPage,
+  });
+
+  return normalizePaginatedResult(
+    response,
+    query?.page ?? 1,
+    query?.perPage ?? 10,
+  );
+}
+
+export async function fetchMyOrders(): Promise<Order[]> {
+  const paginated = await fetchPaginatedMyOrders();
+  return paginated.data;
 }
 
 export async function fetchOrder(id: number): Promise<Order> {
