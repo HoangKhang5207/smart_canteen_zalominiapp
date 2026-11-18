@@ -50,7 +50,7 @@ export default function OrderDetailPage() {
         title="Chi tiết đơn hàng"
         onBackClick={() => navigate("/orders")}
       />
-      <main className="p-11 space-y-4 max-w-2xl mx-auto">
+      <main className="app-main space-y-4 max-w-2xl mx-auto">
         {isNotFound ? (
           <Box
             role="status"
@@ -115,8 +115,8 @@ export default function OrderDetailPage() {
                         />
                         <p
                           className={`text-[11px] leading-tight ${reached
-                              ? "font-semibold text-brand-900"
-                              : "text-gray-400"
+                            ? "font-semibold text-brand-900"
+                            : "text-gray-400"
                             }`}
                         >
                           {step.label}

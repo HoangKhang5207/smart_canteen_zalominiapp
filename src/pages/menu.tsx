@@ -204,7 +204,7 @@ export default function MenuPage() {
   return (
     <Page className="bg-surface-muted min-h-screen pb-28">
       <Header title="Smart Canteen — Thực đơn" showBackIcon={false} />
-      <main className="p-11 space-y-11 max-w-2xl mx-auto">
+      <main className="app-main space-y-4 max-w-2xl mx-auto">
         <section
           aria-label="Giới thiệu Smart Canteen"
           className="bg-white border border-brand-100 rounded-xl p-3 flex items-center justify-between gap-3"

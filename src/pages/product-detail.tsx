@@ -59,7 +59,7 @@ export default function ProductDetailPage() {
   return (
     <Page className="bg-surface-muted min-h-screen pb-24">
       <Header title="Chi tiết món" onBackClick={() => navigate("/")} />
-      <main className="p-11 max-w-2xl mx-auto">
+      <main className="app-main space-y-4 max-w-2xl mx-auto">
         {isNotFound ? (
           <Box
             role="status"

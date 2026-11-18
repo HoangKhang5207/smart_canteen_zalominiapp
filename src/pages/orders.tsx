@@ -33,7 +33,7 @@ export default function OrdersPage() {
         title="Đơn hàng của tôi"
         onBackClick={() => navigate("/")}
       />
-      <main className="p-11 space-y-3 max-w-2xl mx-auto">
+      <main className="app-main space-y-3 max-w-2xl mx-auto">
         {ordersQuery.isLoading ? (
           <LoadingState label="Đang tải lịch sử đơn hàng..." />
         ) : ordersQuery.error ? (

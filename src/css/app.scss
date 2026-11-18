@@ -9,6 +9,41 @@ body {
   color: #111827;
 }
 
+/*
+ * Fix ZaUI Header overlap on Mobile (Zalo Mini App WebView) & Desktop:
+ * In zmp-ui/zaui.css, .zaui-header uses `position: fixed; top: 0;`, which removes
+ * the header from normal document flow and causes <main> to start at y=0 underneath
+ * the status bar and header. Switching .zaui-header to `position: sticky; top: 0;`
+ * keeps it pinned at the top while occupying its full safe-area + header height in flow.
+ */
+.zaui-header {
+  position: sticky !important;
+  top: 0 !important;
+  left: 0;
+  width: 100%;
+  height: auto !important;
+  min-height: calc(
+    max(var(--zaui-safe-area-inset-top, 0px), env(safe-area-inset-top, 0px)) +
+      52px
+  ) !important;
+  padding-top: calc(
+    max(var(--zaui-safe-area-inset-top, 0px), env(safe-area-inset-top, 0px)) +
+      12px
+  ) !important;
+  padding-bottom: 12px !important;
+  padding-left: 16px !important;
+  padding-right: 100px !important;
+  margin-bottom: 0 !important;
+  z-index: 999;
+}
+
+.app-main {
+  padding-top: 16px;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-bottom: 24px;
+}
+
 .page {
   padding: 16px 16px 96px 16px;
 }
@@ -26,11 +61,44 @@ body {
 
 .zaui-btn-primary {
   background-color: #2e7d32 !important;
+  color: #ffffff !important;
 }
 
 .zaui-btn-primary:hover,
 .zaui-btn-primary:active {
   background-color: #236b27 !important;
+}
+
+.zaui-btn-secondary,
+body[zaui-theme="dark"] .zaui-btn-secondary {
+  background-color: #eef8eb !important;
+  color: #14532d !important;
+  border: 1px solid #d8f0d2 !important;
+}
+
+.zaui-btn-secondary:hover,
+.zaui-btn-secondary:active,
+body[zaui-theme="dark"] .zaui-btn-secondary:active {
+  background-color: #d8f0d2 !important;
+}
+
+/* Keep search input readable even when mobile OS is in Dark Mode */
+.zaui-input-affix-wrapper,
+body[zaui-theme="dark"] .zaui-input-affix-wrapper {
+  background-color: #ffffff !important;
+  border-color: #d1d5db !important;
+  color: #111827 !important;
+}
+
+.zaui-input-affix-wrapper .zaui-input,
+body[zaui-theme="dark"] .zaui-input-affix-wrapper .zaui-input {
+  color: #111827 !important;
+  background-color: transparent !important;
+}
+
+.zaui-input-affix-wrapper .zaui-input::placeholder,
+body[zaui-theme="dark"] .zaui-input-affix-wrapper .zaui-input::placeholder {
+  color: #6b7280 !important;
 }
 
 .no-scrollbar::-webkit-scrollbar {

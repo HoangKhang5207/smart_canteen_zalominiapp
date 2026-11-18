@@ -1,7 +1,6 @@
 import React, { useEffect } from "react";
 import { useSetAtom } from "jotai";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { getSystemInfo } from "zmp-sdk";
 import {
   AnimationRoutes,
   App,
@@ -9,7 +8,6 @@ import {
   SnackbarProvider,
   ZMPRouter,
 } from "zmp-ui";
-import { AppProps } from "zmp-ui/app";
 
 import { ensureAuthenticated } from "@/features/auth/api";
 import { authErrorAtom, currentUserAtom } from "@/features/auth/store";
@@ -60,7 +58,7 @@ function AuthBootstrap({ children }: { children: React.ReactNode }) {
 const Layout = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <App theme={getSystemInfo().zaloTheme as AppProps["theme"]}>
+      <App theme="light">
         <SnackbarProvider>
           <AuthBootstrap>
             <ZMPRouter>
