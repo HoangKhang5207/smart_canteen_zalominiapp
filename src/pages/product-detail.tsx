@@ -12,6 +12,7 @@ import {
   useSnackbar,
 } from "zmp-ui";
 import { BottomNav } from "@/components/bottom-nav";
+import { ProductImage } from "@/components/product-image";
 import { ErrorState, LoadingState } from "@/components/state-views";
 import {
   MAX_ITEM_QUANTITY,
@@ -21,7 +22,6 @@ import { cartItemsAtom } from "@/features/cart/store";
 import { fetchProduct } from "@/features/menu/api";
 import { ApiError } from "@/lib/api-client";
 import { formatVnd } from "@/lib/format";
-import canteenLogo from "@/static/canteen-logo.jpg";
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -91,17 +91,11 @@ export default function ProductDetailPage() {
           />
         ) : productQuery.data ? (
           <article className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-            <div className="w-full h-48 bg-brand-50 border-b border-brand-100 flex items-center justify-center overflow-hidden">
-              <img
-                src={productQuery.data.image_url || canteenLogo}
-                alt={productQuery.data.name}
-                className={`w-full h-full ${
-                  productQuery.data.image_url
-                    ? "object-cover"
-                    : "object-contain p-6"
-                }`}
-              />
-            </div>
+            <ProductImage
+              imageUrl={productQuery.data.image_url}
+              alt={productQuery.data.name}
+              variant="detail"
+            />
             <div className="p-4 space-y-4">
               <div className="flex items-start justify-between gap-3">
                 <h1 className="text-lg font-bold text-gray-900">

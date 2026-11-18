@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Box, Header, Input, Page, Text, useNavigate, useSnackbar } from "zmp-ui";
 import { BottomNav } from "@/components/bottom-nav";
 import { BrandLogo } from "@/components/brand-logo";
+import { ProductImage } from "@/components/product-image";
 import { EmptyState, ErrorState, LoadingState } from "@/components/state-views";
 import { currentUserAtom } from "@/features/auth/store";
 import { addCartItem } from "@/features/cart/cart-logic";
@@ -11,7 +12,6 @@ import { cartItemsAtom, cartTotalsAtom } from "@/features/cart/store";
 import { fetchCategories, fetchProducts } from "@/features/menu/api";
 import type { Category, Product } from "@/features/menu/types";
 import { formatVnd } from "@/lib/format";
-import canteenLogo from "@/static/canteen-logo.jpg";
 
 function useDebouncedValue<T>(value: T, delayMs: number): T {
   const [debounced, setDebounced] = useState<T>(value);
@@ -88,15 +88,11 @@ function ProductCard({
         onClick={() => onOpen(product.id)}
         className="flex-1 min-w-0 text-left flex items-start gap-3 focus:outline-none focus:ring-2 focus:ring-brand-700 rounded-lg"
       >
-        <div className="w-16 h-16 rounded-lg bg-brand-50 border border-brand-100 shrink-0 flex items-center justify-center overflow-hidden">
-          <img
-            src={product.image_url || canteenLogo}
-            alt={product.name}
-            className={`w-full h-full ${
-              product.image_url ? "object-cover" : "object-contain p-1.5"
-            }`}
-          />
-        </div>
+        <ProductImage
+          imageUrl={product.image_url}
+          alt={product.name}
+          variant="card"
+        />
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <h2 className="text-base font-semibold text-gray-900 truncate">

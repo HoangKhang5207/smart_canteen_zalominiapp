@@ -3,6 +3,7 @@ import { useAtom, useAtomValue } from "jotai";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button, Header, Page, useNavigate, useSnackbar } from "zmp-ui";
 import { BottomNav } from "@/components/bottom-nav";
+import { ProductImage } from "@/components/product-image";
 import { EmptyState } from "@/components/state-views";
 import {
   MAX_ITEM_QUANTITY,
@@ -18,7 +19,6 @@ import {
 } from "@/features/cart/store";
 import { createOrder } from "@/features/orders/api";
 import { formatVnd } from "@/lib/format";
-import canteenLogo from "@/static/canteen-logo.jpg";
 
 export default function CartPage() {
   const navigate = useNavigate();
@@ -106,10 +106,10 @@ export default function CartPage() {
                     className="p-3 flex items-center justify-between gap-3"
                   >
                     <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <img
-                        src={product.image_url || canteenLogo}
+                      <ProductImage
+                        imageUrl={product.image_url}
                         alt={product.name}
-                        className="w-12 h-12 rounded-lg bg-brand-50 border border-brand-100 object-contain p-1 shrink-0"
+                        variant="cart"
                       />
                       <div className="min-w-0 flex-1">
                         <h2 className="text-sm font-semibold text-gray-900 truncate">
