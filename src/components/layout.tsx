@@ -9,7 +9,10 @@ import {
   ZMPRouter,
 } from "zmp-ui";
 
-import { ensureAuthenticated } from "@/features/auth/api";
+import {
+  ensureAuthenticated,
+  subscribeAuthUser,
+} from "@/features/auth/api";
 import { authErrorAtom, currentUserAtom } from "@/features/auth/store";
 import CartPage from "@/pages/cart";
 import MenuPage from "@/pages/menu";
@@ -33,6 +36,15 @@ function AuthBootstrap({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let active = true;
+    const unsubscribe = subscribeAuthUser((user) => {
+      if (active) {
+        setCurrentUser(user);
+        if (user) {
+          setAuthError(null);
+        }
+      }
+    });
+
     ensureAuthenticated()
       .then((user) => {
         if (active) {
@@ -49,6 +61,7 @@ function AuthBootstrap({ children }: { children: React.ReactNode }) {
       });
     return () => {
       active = false;
+      unsubscribe();
     };
   }, [setCurrentUser, setAuthError]);
 
