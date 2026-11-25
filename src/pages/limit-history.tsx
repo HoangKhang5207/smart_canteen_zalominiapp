@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useAtom } from "jotai";
 import { useQuery } from "@tanstack/react-query";
 import { Header, Page, useNavigate } from "zmp-ui";
 import { BottomNav } from "@/components/bottom-nav";
@@ -8,6 +9,7 @@ import {
   fetchCardLimitLogs,
   fetchMyStudentCards,
 } from "@/features/canteen/api";
+import { selectedCardIdAtom } from "@/features/canteen/store";
 import { formatVnd } from "@/lib/format";
 
 const LOGS_PER_PAGE = 10;
@@ -15,13 +17,16 @@ const LOGS_PER_PAGE = 10;
 export default function LimitHistoryPage() {
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
+  const [selectedCardId, setSelectedCardId] = useAtom(selectedCardIdAtom);
 
   const cardsQuery = useQuery({
     queryKey: ["canteen-cards"],
     queryFn: fetchMyStudentCards,
   });
 
-  const activeCard = cardsQuery.data?.[0] ?? null;
+  const cards = cardsQuery.data ?? [];
+  const activeCard =
+    cards.find((item) => item.id === selectedCardId) ?? cards[0] ?? null;
 
   const logsQuery = useQuery({
     queryKey: [
@@ -71,6 +76,37 @@ export default function LimitHistoryPage() {
           />
         ) : (
           <>
+            {cards.length > 1 ? (
+              <div
+                className="flex gap-2 overflow-x-auto pb-1"
+                role="tablist"
+                aria-label="Chọn thẻ học sinh để xem lịch sử hạn mức"
+              >
+                {cards.map((card) => {
+                  const isSelected = card.id === activeCard.id;
+                  return (
+                    <button
+                      key={card.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={isSelected}
+                      onClick={() => {
+                        setSelectedCardId(card.id);
+                        setPage(1);
+                      }}
+                      className={`px-3 py-1.5 rounded-full text-xs font-semibold border whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-brand-700 ${
+                        isSelected
+                          ? "bg-brand-700 text-white border-brand-700"
+                          : "bg-white text-gray-700 border-gray-200 hover:border-brand-500"
+                      }`}
+                    >
+                      {card.student.full_name} ({card.student.class_name})
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+
             <div className="bg-brand-50 border border-brand-100 rounded-xl p-3 text-xs text-brand-900 flex items-center justify-between gap-2">
               <span>
                 Thẻ <strong className="font-mono">{activeCard.card_code}</strong>{" "}

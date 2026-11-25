@@ -16,6 +16,7 @@ import {
   bankLinkDraftAtom,
   bankLinkSuccessBannerAtom,
   EMPTY_BANK_LINK_FORM,
+  selectedCardIdAtom,
 } from "@/features/canteen/store";
 import { createIdempotencyKey } from "@/features/cart/cart-logic";
 import { fetchProducts } from "@/features/menu/api";
@@ -26,7 +27,7 @@ export default function CanteenHubPage() {
   const { openSnackbar } = useSnackbar();
   const queryClient = useQueryClient();
 
-  const [selectedCardId, setSelectedCardId] = useState<number | null>(null);
+  const [selectedCardId, setSelectedCardId] = useAtom(selectedCardIdAtom);
   const [isLimitSheetOpen, setIsLimitSheetOpen] = useState(false);
   const [limitError, setLimitError] = useState<string | null>(null);
   const [posError, setPosError] = useState<string | null>(null);

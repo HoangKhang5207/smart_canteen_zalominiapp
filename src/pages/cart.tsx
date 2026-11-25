@@ -7,6 +7,7 @@ import { ProductImage } from "@/components/product-image";
 import { EmptyState } from "@/components/state-views";
 import { fetchMyStudentCards } from "@/features/canteen/api";
 import { canPayWithStudentCard } from "@/features/canteen/spending-limit";
+import { selectedCardIdAtom } from "@/features/canteen/store";
 import {
   MAX_ITEM_QUANTITY,
   computeCartFingerprint,
@@ -35,15 +36,20 @@ export default function CartPage() {
   >("COUNTER_CASH");
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  const [selectedCardId, setSelectedCardId] = useAtom(selectedCardIdAtom);
+
   const cardsQuery = useQuery({
     queryKey: ["canteen-cards"],
     queryFn: fetchMyStudentCards,
   });
 
+  const linkedCards = (cardsQuery.data ?? []).filter(
+    (card) => card.is_bank_linked && card.status === "ACTIVE",
+  );
   const linkedCard =
-    (cardsQuery.data ?? []).find(
-      (card) => card.is_bank_linked && card.status === "ACTIVE",
-    ) ?? null;
+    linkedCards.find((card) => card.id === selectedCardId) ??
+    linkedCards[0] ??
+    null;
 
   const effectivePaymentMethod =
     paymentChoice === "STUDENT_CARD" && linkedCard
@@ -240,6 +246,37 @@ export default function CartPage() {
                       {linkedCard.bank_link?.account_number_masked})
                     </p>
                   </button>
+
+                  {effectivePaymentMethod === "STUDENT_CARD" &&
+                  linkedCards.length > 1 ? (
+                    <div
+                      className="flex gap-2 overflow-x-auto pt-1"
+                      role="group"
+                      aria-label="Chọn thẻ học sinh thanh toán"
+                    >
+                      {linkedCards.map((card) => {
+                        const isSelected = card.id === linkedCard.id;
+                        return (
+                          <button
+                            key={card.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedCardId(card.id);
+                              setSubmitError(null);
+                            }}
+                            className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-brand-700 ${
+                              isSelected
+                                ? "bg-brand-700 text-white border-brand-700"
+                                : "bg-white text-gray-700 border-gray-200 hover:border-brand-500"
+                            }`}
+                          >
+                            {card.student.full_name} ·{" "}
+                            {formatVnd(card.spending_limit.remaining_limit)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : null}
 
                   <button
                     type="button"

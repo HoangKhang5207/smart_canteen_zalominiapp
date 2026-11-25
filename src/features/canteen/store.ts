@@ -16,6 +16,8 @@ export interface PendingBankLinkDraft {
   values: BankLinkFormValues;
 }
 
+export const selectedCardIdAtom = atom<number | null>(null);
+
 export const bankLinkDraftAtom = atom<PendingBankLinkDraft | null>(null);
 
 export const pendingOtpSessionAtom = atom<BankLinkInitiationData | null>(null);
