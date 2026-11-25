@@ -6,18 +6,25 @@ import { BottomNav } from "@/components/bottom-nav";
 import { SpendingLimitSheet } from "@/components/spending-limit-sheet";
 import { EmptyState, ErrorState, LoadingState } from "@/components/state-views";
 import { StudentCardView } from "@/components/student-card-view";
+import { UnlinkConfirmDialog } from "@/components/unlink-confirm-dialog";
 import {
   createPosPurchase,
   fetchCardOrders,
   fetchMyStudentCards,
+  initiateBankUnlink,
   updateCardSpendingLimit,
 } from "@/features/canteen/api";
 import {
   bankLinkDraftAtom,
   bankLinkSuccessBannerAtom,
   EMPTY_BANK_LINK_FORM,
+  pendingUnlinkOtpSessionAtom,
   selectedCardIdAtom,
 } from "@/features/canteen/store";
+import {
+  canUnlinkBankAccount,
+  getRemainingBarTone,
+} from "@/features/canteen/spending-limit";
 import { createIdempotencyKey } from "@/features/cart/cart-logic";
 import { fetchProducts } from "@/features/menu/api";
 import { formatVnd } from "@/lib/format";
@@ -31,9 +38,12 @@ export default function CanteenHubPage() {
   const [isLimitSheetOpen, setIsLimitSheetOpen] = useState(false);
   const [limitError, setLimitError] = useState<string | null>(null);
   const [posError, setPosError] = useState<string | null>(null);
+  const [isUnlinkDialogOpen, setIsUnlinkDialogOpen] = useState(false);
+  const [unlinkError, setUnlinkError] = useState<string | null>(null);
 
   const [successBanner, setSuccessBanner] = useAtom(bankLinkSuccessBannerAtom);
   const setDraft = useSetAtom(bankLinkDraftAtom);
+  const setPendingUnlinkSession = useSetAtom(pendingUnlinkOtpSessionAtom);
 
   const cardsQuery = useQuery({
     queryKey: ["canteen-cards"],
@@ -117,6 +127,33 @@ export default function CanteenHubPage() {
     },
   });
 
+  const initiateUnlinkMutation = useMutation({
+    mutationFn: async () => {
+      if (!activeCard?.bank_link) {
+        throw new Error("Không tìm thấy tài khoản ngân hàng đang liên kết.");
+      }
+      return initiateBankUnlink(activeCard.bank_link.id);
+    },
+    onSuccess: (initiation) => {
+      setUnlinkError(null);
+      setIsUnlinkDialogOpen(false);
+      setSuccessBanner(null);
+      setPendingUnlinkSession({
+        initiation,
+        cardCode: activeCard?.card_code ?? "",
+        studentName: activeCard?.student.full_name ?? "",
+      });
+      navigate("/canteen/unlink-otp");
+    },
+    onError: (err) => {
+      setUnlinkError(
+        err instanceof Error
+          ? err.message
+          : "Không thể khởi tạo yêu cầu hủy liên kết lúc này.",
+      );
+    },
+  });
+
   const handleStartBankLink = () => {
     if (!activeCard) {
       return;
@@ -141,6 +178,17 @@ export default function CanteenHubPage() {
     dailyLimit > 0
       ? Math.max(0, Math.min(100, Math.round((remainingLimit / dailyLimit) * 100)))
       : 0;
+  const isCardActive = activeCard?.status === "ACTIVE";
+  const canUnlink = activeCard
+    ? canUnlinkBankAccount(activeCard.status, activeCard.is_bank_linked)
+    : false;
+  const barTone = getRemainingBarTone(remainingPct);
+  const progressBarColor =
+    barTone === "red"
+      ? "bg-red-600"
+      : barTone === "amber"
+        ? "bg-amber-600"
+        : "bg-brand-700";
 
   return (
     <Page className="bg-surface-muted min-h-screen pb-24">
@@ -203,7 +251,12 @@ export default function CanteenHubPage() {
                       type="button"
                       role="tab"
                       aria-selected={isSelected}
-                      onClick={() => setSelectedCardId(card.id)}
+                      onClick={() => {
+                        setSelectedCardId(card.id);
+                        setPosError(null);
+                        setLimitError(null);
+                        setUnlinkError(null);
+                      }}
                       className={`px-3 py-1.5 rounded-full text-xs font-semibold border whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-brand-700 ${
                         isSelected
                           ? "bg-brand-700 text-white border-brand-700"
@@ -249,9 +302,7 @@ export default function CanteenHubPage() {
                       aria-label="Phần trăm hạn mức còn lại hôm nay"
                     >
                       <div
-                        className={`h-full rounded-full transition-all ${
-                          remainingPct <= 20 ? "bg-amber-500" : "bg-brand-700"
-                        }`}
+                        className={`h-full rounded-full transition-all ${progressBarColor}`}
                         style={{ width: `${remainingPct}%` }}
                       />
                     </div>
@@ -261,14 +312,23 @@ export default function CanteenHubPage() {
                     </div>
                   </div>
 
+                  {!isCardActive ? (
+                    <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2.5">
+                      Thẻ đang ở trạng thái <strong>{activeCard.status}</strong>{" "}
+                      nên tạm dừng chi tiêu và điều chỉnh hạn mức. Bạn vẫn có
+                      thể hủy liên kết ngân hàng bên dưới.
+                    </p>
+                  ) : null}
+
                   <div className="grid grid-cols-2 gap-2.5 pt-1">
                     <button
                       type="button"
+                      disabled={!isCardActive}
                       onClick={() => {
                         setLimitError(null);
                         setIsLimitSheetOpen(true);
                       }}
-                      className="py-2.5 px-3 rounded-lg text-xs font-semibold text-white bg-brand-700 hover:bg-brand-800 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-700"
+                      className="py-2.5 px-3 rounded-lg text-xs font-semibold text-white bg-brand-700 hover:bg-brand-800 disabled:bg-gray-300 disabled:text-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-700"
                     >
                       Thiết lập hạn mức
                     </button>
@@ -335,6 +395,7 @@ export default function CanteenHubPage() {
                                   {new Date(order.created_at).toLocaleString(
                                     "vi-VN",
                                     {
+                                      timeZone: "Asia/Ho_Chi_Minh",
                                       hour: "2-digit",
                                       minute: "2-digit",
                                       day: "2-digit",
@@ -373,9 +434,9 @@ export default function CanteenHubPage() {
                       ) : null}
                       <button
                         type="button"
-                        disabled={posSwipeMutation.isPending}
+                        disabled={!isCardActive || posSwipeMutation.isPending}
                         onClick={() => {
-                          if (posSwipeMutation.isPending) {
+                          if (!isCardActive || posSwipeMutation.isPending) {
                             return;
                           }
                           setPosError(null);
@@ -435,6 +496,21 @@ export default function CanteenHubPage() {
                       </dd>
                     </div>
                   </dl>
+
+                  {canUnlink ? (
+                    <div className="pt-2 border-t border-gray-100">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUnlinkError(null);
+                          setIsUnlinkDialogOpen(true);
+                        }}
+                        className="w-full py-2.5 px-3 rounded-lg text-xs font-semibold text-red-700 bg-red-50 border border-red-200 hover:bg-red-100 transition-colors focus:outline-none focus:ring-2 focus:ring-red-700"
+                      >
+                        Hủy liên kết ngân hàng
+                      </button>
+                    </div>
+                  ) : null}
                 </section>
               </>
             ) : (
@@ -488,13 +564,36 @@ export default function CanteenHubPage() {
 
       <SpendingLimitSheet
         isOpen={isLimitSheetOpen}
+        cardLabel={
+          activeCard
+            ? `${activeCard.student.full_name} · Thẻ ${activeCard.card_code}`
+            : undefined
+        }
         currentLimit={dailyLimit}
         spentToday={spentToday}
         isSaving={limitMutation.isPending}
         serverError={limitError}
+        onClearError={() => setLimitError(null)}
         onClose={() => setIsLimitSheetOpen(false)}
         onSave={(amount) => limitMutation.mutate(amount)}
       />
+
+      {activeCard?.bank_link ? (
+        <UnlinkConfirmDialog
+          isOpen={isUnlinkDialogOpen}
+          cardCode={activeCard.card_code}
+          studentName={activeCard.student.full_name}
+          bankName={activeCard.bank_link.bank_name}
+          accountNumberMasked={activeCard.bank_link.account_number_masked}
+          isSubmitting={initiateUnlinkMutation.isPending}
+          errorMessage={unlinkError}
+          onCancel={() => {
+            setUnlinkError(null);
+            setIsUnlinkDialogOpen(false);
+          }}
+          onConfirm={() => initiateUnlinkMutation.mutate()}
+        />
+      ) : null}
 
       <BottomNav />
     </Page>

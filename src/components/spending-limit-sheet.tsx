@@ -8,24 +8,32 @@ import { formatVnd } from "@/lib/format";
 
 interface SpendingLimitSheetProps {
   isOpen: boolean;
+  cardLabel?: string;
   currentLimit: number;
   spentToday: number;
   isSaving: boolean;
   serverError: string | null;
+  onClearError?: () => void;
   onClose: () => void;
   onSave: (dailyLimit: number) => void;
 }
 
 export function SpendingLimitSheet({
   isOpen,
+  cardLabel,
   currentLimit,
   spentToday,
   isSaving,
   serverError,
+  onClearError,
   onClose,
   onSave,
 }: SpendingLimitSheetProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+  const currentLimitRef = useRef<number>(currentLimit);
+  currentLimitRef.current = currentLimit;
+
   const [rawInput, setRawInput] = useState(String(currentLimit));
   const [localError, setLocalError] = useState<string | null>(null);
 
@@ -33,13 +41,23 @@ export function SpendingLimitSheet({
     if (!isOpen) {
       return;
     }
-    setRawInput(currentLimit > 0 ? String(currentLimit) : "");
+    previousFocusRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    const initialLimit = currentLimitRef.current;
+    setRawInput(initialLimit > 0 ? String(initialLimit) : "");
     setLocalError(null);
     const frame = window.requestAnimationFrame(() => {
       inputRef.current?.focus();
     });
-    return () => window.cancelAnimationFrame(frame);
-  }, [isOpen, currentLimit]);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      if (previousFocusRef.current?.isConnected) {
+        previousFocusRef.current.focus();
+      }
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -99,6 +117,9 @@ export function SpendingLimitSheet({
           >
             Hạn mức chi tiêu hằng ngày
           </h2>
+          {cardLabel ? (
+            <p className="text-xs font-semibold text-brand-700">{cardLabel}</p>
+          ) : null}
           <p className="text-xs text-gray-600">
             Giới hạn số tiền tối đa học sinh có thể chi tiêu mỗi ngày qua trích
             nợ tự động (không phải số dư ví).
@@ -143,6 +164,9 @@ export function SpendingLimitSheet({
                 if (localError) {
                   setLocalError(null);
                 }
+                if (serverError) {
+                  onClearError?.();
+                }
               }}
               className="w-full px-3 py-2.5 text-base font-mono font-bold rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-700"
             />
@@ -169,6 +193,9 @@ export function SpendingLimitSheet({
                     onClick={() => {
                       setRawInput(String(preset.amount));
                       setLocalError(null);
+                      if (serverError) {
+                        onClearError?.();
+                      }
                     }}
                     className={`py-2 px-2 rounded-lg text-xs font-bold border transition-colors focus:outline-none focus:ring-2 focus:ring-brand-700 ${
                       isSelected

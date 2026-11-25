@@ -89,9 +89,12 @@ export interface OtpChallengeMeta {
   debug_otp?: string;
 }
 
+export type OtpPurpose = "BANK_LINK" | "BANK_UNLINK";
+
 export interface BankLinkInitiationData {
   bank_link_id: number;
   student_card_id: number;
+  purpose?: OtpPurpose;
   status: BankLinkStatus;
   bank_code: string;
   bank_name: string;

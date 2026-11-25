@@ -78,6 +78,40 @@ export async function resendBankLinkOtp(
   return response.data;
 }
 
+export async function initiateBankUnlink(
+  bankLinkId: number,
+): Promise<BankLinkInitiationData> {
+  await ensureAuthenticated();
+  const response = await apiPost<ItemResponse<BankLinkInitiationData>>(
+    `/canteen/bank-links/${bankLinkId}/unlink/initiate`,
+  );
+  return response.data;
+}
+
+export async function verifyBankUnlinkOtp(
+  bankLinkId: number,
+  otpCode: string,
+): Promise<StudentCard> {
+  await ensureAuthenticated();
+  const response = await apiPost<ItemResponse<StudentCard>>(
+    `/canteen/bank-links/${bankLinkId}/unlink/verify-otp`,
+    {
+      otp_code: otpCode.trim(),
+    },
+  );
+  return response.data;
+}
+
+export async function resendBankUnlinkOtp(
+  bankLinkId: number,
+): Promise<BankLinkInitiationData> {
+  await ensureAuthenticated();
+  const response = await apiPost<ItemResponse<BankLinkInitiationData>>(
+    `/canteen/bank-links/${bankLinkId}/unlink/resend-otp`,
+  );
+  return response.data;
+}
+
 export async function updateCardSpendingLimit(
   cardId: number,
   dailyLimit: number,

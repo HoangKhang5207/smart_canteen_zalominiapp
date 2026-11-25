@@ -16,6 +16,7 @@ import {
 import { authErrorAtom, currentUserAtom } from "@/features/auth/store";
 import BankLinkFormPage from "@/pages/bank-link-form";
 import BankLinkOtpPage from "@/pages/bank-link-otp";
+import BankUnlinkOtpPage from "@/pages/bank-unlink-otp";
 import CanteenHubPage from "@/pages/canteen";
 import CartPage from "@/pages/cart";
 import LimitHistoryPage from "@/pages/limit-history";
@@ -84,6 +85,7 @@ const Layout = () => {
                 <Route path="/canteen" element={<CanteenHubPage />} />
                 <Route path="/canteen/link-bank" element={<BankLinkFormPage />} />
                 <Route path="/canteen/verify-otp" element={<BankLinkOtpPage />} />
+                <Route path="/canteen/unlink-otp" element={<BankUnlinkOtpPage />} />
                 <Route path="/canteen/limit-history" element={<LimitHistoryPage />} />
                 <Route path="/products/:id" element={<ProductDetailPage />} />
                 <Route path="/cart" element={<CartPage />} />

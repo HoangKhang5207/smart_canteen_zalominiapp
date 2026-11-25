@@ -161,7 +161,9 @@ export default function LimitHistoryPage() {
                     ) : null}
 
                     <p className="text-[11px] text-gray-500">
-                      {new Date(entry.created_at).toLocaleString("vi-VN")}
+                      {new Date(entry.created_at).toLocaleString("vi-VN", {
+                        timeZone: "Asia/Ho_Chi_Minh",
+                      })}
                       {entry.changed_by_name
                         ? ` · ${entry.changed_by_name}`
                         : ""}
