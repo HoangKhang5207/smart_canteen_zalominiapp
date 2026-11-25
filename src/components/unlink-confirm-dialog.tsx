@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from "react";
+import { useFocusTrap } from "@/lib/use-focus-trap";
 
 interface UnlinkConfirmDialogProps {
   isOpen: boolean;
@@ -23,8 +24,11 @@ export function UnlinkConfirmDialog({
   onCancel,
   onConfirm,
 }: UnlinkConfirmDialogProps) {
+  const dialogRef = useRef<HTMLDivElement | null>(null);
   const cancelButtonRef = useRef<HTMLButtonElement | null>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+
+  useFocusTrap(isOpen, dialogRef);
 
   useEffect(() => {
     if (!isOpen) {
@@ -73,6 +77,7 @@ export function UnlinkConfirmDialog({
       }}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="unlink-confirm-title"

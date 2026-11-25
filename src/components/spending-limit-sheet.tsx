@@ -5,6 +5,7 @@ import {
   validateDailyLimit,
 } from "@/features/canteen/spending-limit";
 import { formatVnd } from "@/lib/format";
+import { useFocusTrap } from "@/lib/use-focus-trap";
 
 interface SpendingLimitSheetProps {
   isOpen: boolean;
@@ -29,10 +30,13 @@ export function SpendingLimitSheet({
   onClose,
   onSave,
 }: SpendingLimitSheetProps) {
+  const dialogRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const currentLimitRef = useRef<number>(currentLimit);
   currentLimitRef.current = currentLimit;
+
+  useFocusTrap(isOpen, dialogRef);
 
   const [rawInput, setRawInput] = useState(String(currentLimit));
   const [localError, setLocalError] = useState<string | null>(null);
@@ -105,6 +109,7 @@ export function SpendingLimitSheet({
       }}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="spending-limit-dialog-title"
