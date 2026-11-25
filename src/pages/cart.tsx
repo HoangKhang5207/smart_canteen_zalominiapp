@@ -119,6 +119,8 @@ export default function CartPage() {
       void queryClient.invalidateQueries({ queryKey: ["products"] });
       void queryClient.invalidateQueries({ queryKey: ["product"] });
       void queryClient.invalidateQueries({ queryKey: ["canteen-pos-sample-products"] });
+      void queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      void queryClient.invalidateQueries({ queryKey: ["notifications-unread"] });
       openSnackbar({
         text: `Đặt đơn thành công (${order.code})`,
         duration: 2200,
@@ -290,6 +292,7 @@ export default function CartPage() {
                       <button
                         type="button"
                         role="radio"
+                        tabIndex={effectivePaymentMethod === "STUDENT_CARD" ? 0 : -1}
                         aria-checked={effectivePaymentMethod === "STUDENT_CARD"}
                         onClick={() => {
                           setPaymentChoice("STUDENT_CARD");
@@ -351,6 +354,7 @@ export default function CartPage() {
                   <button
                     type="button"
                     role="radio"
+                    tabIndex={effectivePaymentMethod === "VNPAY" ? 0 : -1}
                     aria-checked={effectivePaymentMethod === "VNPAY"}
                     onClick={() => {
                       setPaymentChoice("VNPAY");
@@ -373,6 +377,7 @@ export default function CartPage() {
                   <button
                     type="button"
                     role="radio"
+                    tabIndex={effectivePaymentMethod === "COUNTER_CASH" ? 0 : -1}
                     aria-checked={effectivePaymentMethod === "COUNTER_CASH"}
                     onClick={() => {
                       setPaymentChoice("COUNTER_CASH");
@@ -402,13 +407,15 @@ export default function CartPage() {
                       Đơn hàng vượt hạn mức còn lại ({formatVnd(remainingLimit)}
                       ).
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => navigate("/canteen")}
-                      className="font-semibold text-brand-700 underline shrink-0"
-                    >
-                      Đổi hạn mức
-                    </button>
+                    {(currentUser.can_manage_canteen ?? currentUser.role !== "student") ? (
+                      <button
+                        type="button"
+                        onClick={() => navigate("/canteen")}
+                        className="font-semibold text-brand-700 underline shrink-0"
+                      >
+                        Đổi hạn mức
+                      </button>
+                    ) : null}
                   </div>
                 ) : null}
               </section>

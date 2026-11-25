@@ -140,8 +140,16 @@ export async function apiPut<T>(
   return apiMutate<T>("PUT", path, body, options);
 }
 
+export async function apiPatch<T>(
+  path: string,
+  body?: unknown,
+  options?: { headers?: Record<string, string> },
+): Promise<T> {
+  return apiMutate<T>("PATCH", path, body, options);
+}
+
 async function apiMutate<T>(
-  method: "POST" | "PUT",
+  method: "POST" | "PUT" | "PATCH",
   path: string,
   body?: unknown,
   options?: { headers?: Record<string, string> },

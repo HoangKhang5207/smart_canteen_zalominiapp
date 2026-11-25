@@ -32,6 +32,8 @@ export default function LimitHistoryPage() {
   const cards = cardsQuery.data ?? [];
   const activeCard =
     cards.find((item) => item.id === selectedCardId) ?? cards[0] ?? null;
+  const canManageCanteen =
+    currentUser?.can_manage_canteen ?? currentUser?.role !== "student";
 
   const logsQuery = useQuery({
     queryKey: [
@@ -80,7 +82,7 @@ export default function LimitHistoryPage() {
         ) : logs.length === 0 ? (
           <EmptyState
             message="Chưa có lịch sử thay đổi hạn mức chi tiêu nào cho thẻ này."
-            actionLabel="Thiết lập hạn mức"
+            actionLabel={canManageCanteen ? "Thiết lập hạn mức" : "Quay lại Căn tin số"}
             onAction={() => navigate("/canteen")}
           />
         ) : (
