@@ -23,6 +23,7 @@ import {
   cartTotalsAtom,
 } from "@/features/cart/store";
 import { createOrder } from "@/features/orders/api";
+import { formatPaymentError } from "@/features/orders/payment";
 import { formatVnd } from "@/lib/format";
 
 export default function CartPage() {
@@ -36,7 +37,7 @@ export default function CartPage() {
   const [note, setNote] = useAtom(cartNoteAtom);
   const { totalQuantity, estimatedAmount } = useAtomValue(cartTotalsAtom);
   const [paymentChoice, setPaymentChoice] = useState<
-    "COUNTER_CASH" | "STUDENT_CARD"
+    "COUNTER_CASH" | "STUDENT_CARD" | "VNPAY"
   >("COUNTER_CASH");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [loginModalMode, setLoginModalMode] = useState<
@@ -60,9 +61,11 @@ export default function CartPage() {
     null;
 
   const effectivePaymentMethod =
-    paymentChoice === "STUDENT_CARD" && linkedCard
-      ? "STUDENT_CARD"
-      : "COUNTER_CASH";
+    paymentChoice === "STUDENT_CARD"
+      ? linkedCard
+        ? "STUDENT_CARD"
+        : "COUNTER_CASH"
+      : paymentChoice;
   const remainingLimit = linkedCard?.spending_limit.remaining_limit ?? 0;
   const exceedsLimit =
     effectivePaymentMethod === "STUDENT_CARD" &&
@@ -121,9 +124,7 @@ export default function CartPage() {
     },
     onError: (err) => {
       setSubmitError(
-        err instanceof Error
-          ? err.message
-          : "Không thể tạo đơn hàng. Vui lòng thử lại.",
+        formatPaymentError(err, "Không thể tạo đơn hàng. Vui lòng thử lại."),
       );
     },
   });
@@ -235,7 +236,7 @@ export default function CartPage() {
                   Đăng nhập
                 </button>
               </section>
-            ) : linkedCard ? (
+            ) : (
               <section
                 aria-label="Phương thức thanh toán"
                 className="bg-white border border-gray-200 rounded-xl p-4 space-y-2.5"
@@ -248,64 +249,90 @@ export default function CartPage() {
                   aria-label="Chọn phương thức thanh toán"
                   className="space-y-2"
                 >
+                  {linkedCard ? (
+                    <>
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={effectivePaymentMethod === "STUDENT_CARD"}
+                        onClick={() => {
+                          setPaymentChoice("STUDENT_CARD");
+                          setSubmitError(null);
+                        }}
+                        className={`w-full text-left p-3 rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-brand-700 ${
+                          effectivePaymentMethod === "STUDENT_CARD"
+                            ? "border-brand-700 bg-brand-50"
+                            : "border-gray-200 bg-white hover:border-brand-500"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-bold text-gray-900">
+                            Thẻ học sinh thông minh ({linkedCard.card_code})
+                          </span>
+                          <span className="text-xs font-semibold text-brand-700">
+                            Còn {formatVnd(remainingLimit)}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-gray-600 mt-0.5">
+                          Trích nợ tự động qua {linkedCard.bank_link?.bank_name} (
+                          {linkedCard.bank_link?.account_number_masked})
+                        </p>
+                      </button>
+
+                      {effectivePaymentMethod === "STUDENT_CARD" &&
+                      linkedCards.length > 1 ? (
+                        <div
+                          className="flex gap-2 overflow-x-auto pt-1"
+                          role="group"
+                          aria-label="Chọn thẻ học sinh thanh toán"
+                        >
+                          {linkedCards.map((card) => {
+                            const isSelected = card.id === linkedCard.id;
+                            return (
+                              <button
+                                key={card.id}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedCardId(card.id);
+                                  setSubmitError(null);
+                                }}
+                                className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-brand-700 ${
+                                  isSelected
+                                    ? "bg-brand-700 text-white border-brand-700"
+                                    : "bg-white text-gray-700 border-gray-200 hover:border-brand-500"
+                                }`}
+                              >
+                                {card.student.full_name} ·{" "}
+                                {formatVnd(card.spending_limit.remaining_limit)}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : null}
+                    </>
+                  ) : null}
+
                   <button
                     type="button"
                     role="radio"
-                    aria-checked={effectivePaymentMethod === "STUDENT_CARD"}
+                    aria-checked={effectivePaymentMethod === "VNPAY"}
                     onClick={() => {
-                      setPaymentChoice("STUDENT_CARD");
+                      setPaymentChoice("VNPAY");
                       setSubmitError(null);
                     }}
                     className={`w-full text-left p-3 rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-brand-700 ${
-                      effectivePaymentMethod === "STUDENT_CARD"
+                      effectivePaymentMethod === "VNPAY"
                         ? "border-brand-700 bg-brand-50"
                         : "border-gray-200 bg-white hover:border-brand-500"
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs font-bold text-gray-900">
-                        Thẻ học sinh thông minh ({linkedCard.card_code})
-                      </span>
-                      <span className="text-xs font-semibold text-brand-700">
-                        Còn {formatVnd(remainingLimit)}
-                      </span>
-                    </div>
+                    <p className="text-xs font-bold text-gray-900">
+                      Thanh toán VNPay (Sandbox)
+                    </p>
                     <p className="text-[11px] text-gray-600 mt-0.5">
-                      Trích nợ tự động qua {linkedCard.bank_link?.bank_name} (
-                      {linkedCard.bank_link?.account_number_masked})
+                      Chuyển sang cổng VNPay Sandbox ký bảo mật HMAC-SHA512
                     </p>
                   </button>
-
-                  {effectivePaymentMethod === "STUDENT_CARD" &&
-                  linkedCards.length > 1 ? (
-                    <div
-                      className="flex gap-2 overflow-x-auto pt-1"
-                      role="group"
-                      aria-label="Chọn thẻ học sinh thanh toán"
-                    >
-                      {linkedCards.map((card) => {
-                        const isSelected = card.id === linkedCard.id;
-                        return (
-                          <button
-                            key={card.id}
-                            type="button"
-                            onClick={() => {
-                              setSelectedCardId(card.id);
-                              setSubmitError(null);
-                            }}
-                            className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-brand-700 ${
-                              isSelected
-                                ? "bg-brand-700 text-white border-brand-700"
-                                : "bg-white text-gray-700 border-gray-200 hover:border-brand-500"
-                            }`}
-                          >
-                            {card.student.full_name} ·{" "}
-                            {formatVnd(card.spending_limit.remaining_limit)}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ) : null}
 
                   <button
                     type="button"
@@ -349,7 +376,7 @@ export default function CartPage() {
                   </div>
                 ) : null}
               </section>
-            ) : null}
+            )}
 
             <section
               aria-label="Ghi chú đơn hàng"

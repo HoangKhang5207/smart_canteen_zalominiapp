@@ -1,12 +1,19 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useAtomValue } from "jotai";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { openWebview } from "zmp-sdk";
 import { Box, Button, Header, Page, Text, useNavigate, useParams } from "zmp-ui";
 import { BottomNav } from "@/components/bottom-nav";
 import { ErrorState, LoadingState } from "@/components/state-views";
 import { ZaloPhoneLoginPanel } from "@/components/zalo-phone-login";
 import { authHydratedAtom, currentUserAtom } from "@/features/auth/store";
-import { fetchOrder } from "@/features/orders/api";
+import { createVnpayPaymentUrl, fetchOrder } from "@/features/orders/api";
+import {
+  canLaunchVnpayPayment,
+  formatPaymentError,
+  getPaymentBadgeClass,
+  isSafeHttpUrl,
+} from "@/features/orders/payment";
 import { getOrderStatusMeta } from "@/features/orders/status";
 import { ApiError } from "@/lib/api-client";
 import { formatVnd } from "@/lib/format";
@@ -49,14 +56,46 @@ export default function OrderDetailPage() {
     ? WORKFLOW_STEPS.findIndex((s) => s.key === order.status)
     : -1;
 
+  const [vnpayError, setVnpayError] = useState<string | null>(null);
+  const [vnpayUrl, setVnpayUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    setVnpayUrl(null);
+    setVnpayError(null);
+  }, [orderId]);
+
+  const launchExternalUrl = async (url: string) => {
+    try {
+      await openWebview({ url });
+    } catch {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+  };
+
+  const vnpayMutation = useMutation({
+    mutationFn: () => createVnpayPaymentUrl(orderId),
+    onSuccess: (data) => {
+      if (!isSafeHttpUrl(data.payment_url)) {
+        setVnpayUrl(null);
+        setVnpayError("Liên kết thanh toán VNPay không hợp lệ (chỉ chấp nhận HTTP/HTTPS).");
+        return;
+      }
+      setVnpayError(null);
+      setVnpayUrl(data.payment_url);
+      if (!data.simulated) {
+        void launchExternalUrl(data.payment_url);
+      }
+    },
+    onError: (err) => {
+      setVnpayError(
+        formatPaymentError(err, "Không thể tạo liên kết thanh toán VNPay Sandbox."),
+      );
+    },
+  });
+
   const subtotalAmount = order?.subtotal_amount ?? order?.total_amount ?? 0;
   const discountAmount = order?.discount_amount ?? 0;
-  const paymentBadgeClass =
-    order?.payment_status === "PAID"
-      ? "bg-brand-100 text-brand-900 border-brand-200"
-      : order?.payment_status === "REFUNDED"
-        ? "bg-blue-100 text-blue-800 border-blue-200"
-        : "bg-gray-100 text-gray-700 border-gray-200";
+  const paymentBadgeClass = getPaymentBadgeClass(order?.payment_status);
 
   return (
     <Page className="bg-surface-muted min-h-screen pb-24">
@@ -169,6 +208,22 @@ export default function OrderDetailPage() {
               {!statusMeta.isTerminal ? (
                 <p className="text-xs text-gray-600">
                   Trạng thái tự động cập nhật mỗi 7 giây.
+                </p>
+              ) : null}
+
+              {order.payment_status === "FAILED" ? (
+                <p
+                  role="alert"
+                  className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg p-2.5"
+                >
+                  Thanh toán trước đó chưa thành công. Bạn có thể tạo lại liên kết thanh toán hoặc liên hệ quầy căn tin.
+                </p>
+              ) : order.payment_status === "PENDING_RECONCILE" ? (
+                <p
+                  role="status"
+                  className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-lg p-2.5"
+                >
+                  Giao dịch đang chờ đối soát với ngân hàng. Vui lòng không thanh toán lặp lại cho đến khi trạng thái được cập nhật.
                 </p>
               ) : null}
             </section>
@@ -287,6 +342,55 @@ export default function OrderDetailPage() {
                 <p className="text-base font-bold text-brand-700">
                   {formatVnd(order.remaining_limit_snapshot)}
                 </p>
+              </section>
+            ) : null}
+
+            {canLaunchVnpayPayment(order) ? (
+              <section
+                aria-label="Thanh toán VNPay Sandbox"
+                className="bg-white border border-brand-200 rounded-xl p-4 space-y-3"
+              >
+                <div>
+                  <h2 className="text-sm font-bold text-gray-900">
+                    Thanh toán qua VNPay Sandbox
+                  </h2>
+                  <p className="text-xs text-gray-600 mt-0.5">
+                    Tạo liên kết thanh toán có chữ ký HMAC-SHA512 để hoàn tất
+                    đơn hàng trực tuyến.
+                  </p>
+                </div>
+                {vnpayError ? (
+                  <p
+                    role="alert"
+                    className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg p-2.5"
+                  >
+                    {vnpayError}
+                  </p>
+                ) : null}
+                {vnpayUrl && isSafeHttpUrl(vnpayUrl) ? (
+                  <div className="rounded-lg bg-brand-50 border border-brand-100 p-3 space-y-2 text-xs">
+                    <p className="font-semibold text-brand-900">
+                      Đã tạo liên kết VNPay Sandbox hợp lệ:
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => void launchExternalUrl(vnpayUrl)}
+                      className="inline-block font-semibold text-brand-700 underline break-all text-left"
+                    >
+                      Mở cổng thanh toán VNPay Sandbox →
+                    </button>
+                  </div>
+                ) : null}
+                <button
+                  type="button"
+                  disabled={vnpayMutation.isPending}
+                  onClick={() => vnpayMutation.mutate()}
+                  className="w-full py-2.5 px-4 rounded-lg text-sm font-semibold text-white bg-brand-700 hover:bg-brand-800 disabled:bg-gray-300 disabled:text-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-700"
+                >
+                  {vnpayMutation.isPending
+                    ? "Đang tạo liên kết VNPay..."
+                    : "Thanh toán VNPay Sandbox ngay"}
+                </button>
               </section>
             ) : null}
 

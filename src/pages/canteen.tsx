@@ -10,6 +10,7 @@ import { UnlinkConfirmDialog } from "@/components/unlink-confirm-dialog";
 import { ZaloPhoneLoginPanel } from "@/components/zalo-phone-login";
 import { logoutSession } from "@/features/auth/api";
 import { authHydratedAtom, currentUserAtom } from "@/features/auth/store";
+import { formatPaymentError } from "@/features/orders/payment";
 import {
   createPosPurchase,
   fetchCardOrders,
@@ -130,9 +131,7 @@ export default function CanteenHubPage() {
     },
     onError: (err) => {
       setPosError(
-        err instanceof Error
-          ? err.message
-          : "Không thể mô phỏng giao dịch quẹt thẻ POS.",
+        formatPaymentError(err, "Không thể mô phỏng giao dịch quẹt thẻ POS."),
       );
     },
   });
