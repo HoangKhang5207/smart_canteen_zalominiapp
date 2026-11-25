@@ -59,7 +59,8 @@ Pipeline tự động tại [.github/workflows/ci.yml](.github/workflows/ci.yml)
 
 ```bash
 git remote add origin https://github.com/<org-or-user>/smart-canteen-miniapp.git
-git branch -M main
-# Sau khi kiểm tra và merge nhánh làm việc vào main:
+# Sau khi review xong nhánh làm việc, merge vào main rồi push:
+git checkout main
+git merge --no-ff feat/docker-ci
 git push -u origin main
 ```
