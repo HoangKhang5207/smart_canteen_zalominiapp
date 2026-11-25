@@ -1,0 +1,22 @@
+services:
+  miniapp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: ${BUILD_TARGET:-dev}
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000/api/v1}
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000/api/v1}
+    ports:
+      - "${MINIAPP_PORT:-3000}:3000"
+    volumes:
+      - ./:/app
+      - miniapp_node_modules:/app/node_modules
+
+volumes:
+  miniapp_node_modules:
