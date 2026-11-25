@@ -44,6 +44,15 @@ export default function OrderDetailPage() {
     ? WORKFLOW_STEPS.findIndex((s) => s.key === order.status)
     : -1;
 
+  const subtotalAmount = order?.subtotal_amount ?? order?.total_amount ?? 0;
+  const discountAmount = order?.discount_amount ?? 0;
+  const paymentBadgeClass =
+    order?.payment_status === "PAID"
+      ? "bg-brand-100 text-brand-900 border-brand-200"
+      : order?.payment_status === "REFUNDED"
+        ? "bg-blue-100 text-blue-800 border-blue-200"
+        : "bg-gray-100 text-gray-700 border-gray-200";
+
   return (
     <Page className="bg-surface-muted min-h-screen pb-24">
       <Header
@@ -83,20 +92,36 @@ export default function OrderDetailPage() {
         ) : order && statusMeta ? (
           <>
             <section
-              aria-label="Trạng thái đơn hàng"
+              aria-label="Trạng thái và tổng quan đơn hàng"
               className="bg-white border border-brand-100 rounded-xl p-4 space-y-3"
             >
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="text-xs text-gray-500">Mã đơn hàng</p>
+                  <p className="text-xs text-gray-600">Mã đơn</p>
                   <h1 className="font-mono text-lg font-bold text-gray-900">
-                    {order.code}
+                    #{order.code}
                   </h1>
                 </div>
-                <span
-                  className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border ${statusMeta.badgeClass}`}
-                >
-                  {statusMeta.label}
+                <div className="flex flex-col items-end gap-1">
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${paymentBadgeClass}`}
+                  >
+                    {order.payment_status_label || "Chờ thanh toán"}
+                  </span>
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${statusMeta.badgeClass}`}
+                  >
+                    {statusMeta.label}
+                  </span>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-gray-100 flex items-baseline justify-between">
+                <span className="text-xs font-medium text-gray-600">
+                  Tổng thanh toán
+                </span>
+                <span className="text-2xl font-bold text-brand-700">
+                  {formatVnd(order.total_amount)}
                 </span>
               </div>
 
@@ -110,14 +135,16 @@ export default function OrderDetailPage() {
                     return (
                       <li key={step.key} className="space-y-1">
                         <div
-                          className={`h-1.5 rounded-full ${reached ? "bg-brand-700" : "bg-gray-200"
-                            }`}
+                          className={`h-1.5 rounded-full ${
+                            reached ? "bg-brand-700" : "bg-gray-200"
+                          }`}
                         />
                         <p
-                          className={`text-[11px] leading-tight ${reached
-                            ? "font-semibold text-brand-900"
-                            : "text-gray-400"
-                            }`}
+                          className={`text-[11px] leading-tight ${
+                            reached
+                              ? "font-semibold text-brand-900"
+                              : "text-gray-500"
+                          }`}
                         >
                           {step.label}
                         </p>
@@ -128,19 +155,58 @@ export default function OrderDetailPage() {
               ) : null}
 
               {!statusMeta.isTerminal ? (
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-600">
                   Trạng thái tự động cập nhật mỗi 7 giây.
                 </p>
               ) : null}
             </section>
 
             <section
-              aria-label="Danh sách món đã đặt"
+              aria-label="Thông tin giao dịch"
+              className="bg-white border border-gray-200 rounded-xl p-4"
+            >
+              <dl className="divide-y divide-gray-100 text-sm">
+                {order.student_name ? (
+                  <div className="py-2 flex items-center justify-between gap-2">
+                    <dt className="text-gray-600">Học sinh</dt>
+                    <dd className="font-semibold text-gray-900 text-right">
+                      {order.student_name}
+                      {order.student_class ? ` · Lớp ${order.student_class}` : ""}
+                    </dd>
+                  </div>
+                ) : null}
+                <div className="py-2 flex items-center justify-between gap-2">
+                  <dt className="text-gray-600">Thời gian</dt>
+                  <dd className="text-gray-900 font-medium">
+                    {new Date(order.created_at).toLocaleString("vi-VN", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                    })}
+                  </dd>
+                </div>
+                <div className="py-2 flex items-center justify-between gap-2">
+                  <dt className="text-gray-600">Cửa hàng</dt>
+                  <dd className="font-semibold text-gray-900 text-right">
+                    {order.store_name || "Căn tin Smart Canteen"}
+                  </dd>
+                </div>
+                <div className="py-2 flex items-center justify-between gap-2">
+                  <dt className="text-gray-600">Hình thức</dt>
+                  <dd className="font-semibold text-gray-900 text-right">
+                    {order.payment_method_label || "Thanh toán tại quầy"}
+                  </dd>
+                </div>
+              </dl>
+            </section>
+
+            <section
+              aria-label="Món đã mua"
               className="bg-white border border-gray-200 rounded-xl p-4 space-y-3"
             >
-              <h2 className="text-sm font-bold text-gray-900">
-                Chi tiết phần ăn
-              </h2>
+              <h2 className="text-sm font-bold text-gray-900">Món đã mua</h2>
               <ul className="divide-y divide-gray-100">
                 {order.items.map((item) => (
                   <li
@@ -151,8 +217,8 @@ export default function OrderDetailPage() {
                       <p className="font-medium text-gray-900 truncate">
                         {item.product_name || `Món #${item.product_id}`}
                       </p>
-                      <p className="text-xs text-gray-500">
-                        {item.quantity} × {formatVnd(item.unit_price)}
+                      <p className="text-xs text-gray-600">
+                        {formatVnd(item.unit_price)} × {item.quantity}
                       </p>
                     </div>
                     <span className="font-semibold text-gray-900 shrink-0">
@@ -169,15 +235,47 @@ export default function OrderDetailPage() {
                 </div>
               ) : null}
 
-              <div className="pt-3 border-t border-gray-200 flex items-center justify-between">
-                <span className="text-sm font-bold text-gray-900">
-                  Tổng thanh toán
-                </span>
-                <span className="text-lg font-bold text-brand-700">
-                  {formatVnd(order.total_amount)}
-                </span>
-              </div>
+              <dl className="pt-3 border-t border-gray-200 space-y-1.5 text-sm">
+                <div className="flex items-center justify-between text-gray-600">
+                  <dt>Tạm tính</dt>
+                  <dd className="font-medium text-gray-900">
+                    {formatVnd(subtotalAmount)}
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between text-gray-600">
+                  <dt>Giảm giá</dt>
+                  <dd className="font-medium text-gray-900">
+                    {formatVnd(discountAmount)}
+                  </dd>
+                </div>
+                <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
+                  <dt className="font-bold text-gray-900">Tổng cộng</dt>
+                  <dd className="text-lg font-bold text-brand-700">
+                    {formatVnd(order.total_amount)}
+                  </dd>
+                </div>
+              </dl>
             </section>
+
+            {order.remaining_limit_snapshot !== null &&
+            order.remaining_limit_snapshot !== undefined ? (
+              <section
+                aria-label="Hạn mức thẻ học sinh sau giao dịch"
+                className="bg-brand-50 border border-brand-100 rounded-xl p-4 flex items-center justify-between gap-3"
+              >
+                <div>
+                  <p className="text-xs font-semibold text-brand-900">
+                    Thẻ học sinh{order.card_code ? ` (${order.card_code})` : ""}
+                  </p>
+                  <p className="text-xs text-brand-800">
+                    Hạn mức còn lại sau đơn hàng
+                  </p>
+                </div>
+                <p className="text-base font-bold text-brand-700">
+                  {formatVnd(order.remaining_limit_snapshot)}
+                </p>
+              </section>
+            ) : null}
 
             <div className="flex gap-3">
               <Button

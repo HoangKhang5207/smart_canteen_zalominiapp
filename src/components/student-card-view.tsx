@@ -57,7 +57,7 @@ export function StudentCardView({ card }: StudentCardViewProps) {
 
       <div className="flex items-center justify-between gap-3 pt-1">
         <div>
-          <p className="text-[11px] uppercase tracking-wider text-brand-100/80">
+          <p className="text-[11px] uppercase tracking-wider text-brand-100">
             Mã thẻ
           </p>
           <p className="font-mono text-xl font-bold tracking-widest text-white">
@@ -80,7 +80,7 @@ export function StudentCardView({ card }: StudentCardViewProps) {
 
       <div className="grid grid-cols-3 gap-3 pt-3 border-t border-white/15">
         <div className="col-span-2 min-w-0">
-          <p className="text-[11px] uppercase tracking-wider text-brand-100/80">
+          <p className="text-[11px] uppercase tracking-wider text-brand-100">
             Học sinh
           </p>
           <p className="text-sm font-semibold text-white truncate">
@@ -89,7 +89,7 @@ export function StudentCardView({ card }: StudentCardViewProps) {
         </div>
 
         <div className="text-right">
-          <p className="text-[11px] uppercase tracking-wider text-brand-100/80">
+          <p className="text-[11px] uppercase tracking-wider text-brand-100">
             Lớp
           </p>
           <p className="text-sm font-semibold text-white">
