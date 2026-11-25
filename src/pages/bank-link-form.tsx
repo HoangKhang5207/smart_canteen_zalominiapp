@@ -1,8 +1,10 @@
-import React, { useMemo, useState } from "react";
-import { useAtom, useSetAtom } from "jotai";
+import React, { useEffect, useMemo, useState } from "react";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Header, Page, useNavigate } from "zmp-ui";
 import { EmptyState, ErrorState, LoadingState } from "@/components/state-views";
+import { ZaloPhoneLoginPanel } from "@/components/zalo-phone-login";
+import { authHydratedAtom, currentUserAtom } from "@/features/auth/store";
 import {
   fetchMyStudentCards,
   fetchSupportedBanks,
@@ -22,15 +24,29 @@ import { ApiError } from "@/lib/api-client";
 
 export default function BankLinkFormPage() {
   const navigate = useNavigate();
+  const currentUser = useAtomValue(currentUserAtom);
+  const authHydrated = useAtomValue(authHydratedAtom);
   const [draft, setDraft] = useAtom(bankLinkDraftAtom);
   const setPendingOtp = useSetAtom(pendingOtpSessionAtom);
 
-  const [values, setValues] = useState<BankLinkFormValues>(
-    () => draft?.values ?? { ...EMPTY_BANK_LINK_FORM },
-  );
+  const [values, setValues] = useState<BankLinkFormValues>(() => ({
+    ...(draft?.values ?? EMPTY_BANK_LINK_FORM),
+    phone_number:
+      draft?.values.phone_number || currentUser?.phone || "",
+  }));
   const [fieldErrors, setFieldErrors] = useState<BankLinkFormErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [bankSearch, setBankSearch] = useState("");
+
+  useEffect(() => {
+    if (currentUser?.phone) {
+      setValues((prev) =>
+        prev.phone_number === ""
+          ? { ...prev, phone_number: currentUser.phone ?? "" }
+          : prev,
+      );
+    }
+  }, [currentUser?.phone]);
 
   const banksQuery = useQuery({
     queryKey: ["canteen-banks"],
@@ -39,8 +55,9 @@ export default function BankLinkFormPage() {
   });
 
   const cardsQuery = useQuery({
-    queryKey: ["canteen-cards"],
+    queryKey: ["canteen-cards", currentUser?.id ?? null],
     queryFn: fetchMyStudentCards,
+    enabled: Boolean(currentUser),
   });
 
   const banks = banksQuery.data ?? [];
@@ -152,7 +169,11 @@ export default function BankLinkFormPage() {
       />
 
       <main className="app-main max-w-2xl mx-auto space-y-4">
-        {isLoading ? (
+        {!authHydrated ? (
+          <LoadingState label="Đang kiểm tra phiên đăng nhập..." />
+        ) : !currentUser ? (
+          <ZaloPhoneLoginPanel title="Đăng nhập để liên kết ngân hàng" />
+        ) : isLoading ? (
           <LoadingState label="Đang tải danh sách ngân hàng..." />
         ) : loadError ? (
           <ErrorState

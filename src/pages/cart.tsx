@@ -5,6 +5,8 @@ import { Button, Header, Page, useNavigate, useSnackbar } from "zmp-ui";
 import { BottomNav } from "@/components/bottom-nav";
 import { ProductImage } from "@/components/product-image";
 import { EmptyState } from "@/components/state-views";
+import { ZaloPhoneLoginModal } from "@/components/zalo-phone-login";
+import { currentUserAtom } from "@/features/auth/store";
 import { fetchMyStudentCards } from "@/features/canteen/api";
 import { canPayWithStudentCard } from "@/features/canteen/spending-limit";
 import { selectedCardIdAtom } from "@/features/canteen/store";
@@ -28,6 +30,8 @@ export default function CartPage() {
   const { openSnackbar } = useSnackbar();
   const queryClient = useQueryClient();
 
+  const currentUser = useAtomValue(currentUserAtom);
+
   const [items, setItems] = useAtom(cartItemsAtom);
   const [note, setNote] = useAtom(cartNoteAtom);
   const { totalQuantity, estimatedAmount } = useAtomValue(cartTotalsAtom);
@@ -35,12 +39,16 @@ export default function CartPage() {
     "COUNTER_CASH" | "STUDENT_CARD"
   >("COUNTER_CASH");
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [loginModalMode, setLoginModalMode] = useState<
+    null | "card" | "checkout"
+  >(null);
 
   const [selectedCardId, setSelectedCardId] = useAtom(selectedCardIdAtom);
 
   const cardsQuery = useQuery({
-    queryKey: ["canteen-cards"],
+    queryKey: ["canteen-cards", currentUser?.id ?? null],
     queryFn: fetchMyStudentCards,
+    enabled: Boolean(currentUser),
   });
 
   const linkedCards = (cardsQuery.data ?? []).filter(
@@ -206,7 +214,28 @@ export default function CartPage() {
               </ul>
             </section>
 
-            {linkedCard ? (
+            {!currentUser ? (
+              <section
+                aria-label="Đăng nhập để dùng thẻ học sinh"
+                className="bg-brand-50 border border-brand-100 rounded-xl p-3.5 flex items-center justify-between gap-3"
+              >
+                <div className="space-y-0.5 min-w-0">
+                  <p className="text-xs font-bold text-brand-900">
+                    Thanh toán bằng Thẻ học sinh?
+                  </p>
+                  <p className="text-[11px] text-brand-800">
+                    Đăng nhập bằng SĐT Zalo để chọn thẻ học sinh &amp; đặt món.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setLoginModalMode("card")}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-brand-700 hover:bg-brand-800 shrink-0 focus:outline-none focus:ring-2 focus:ring-brand-700"
+                >
+                  Đăng nhập
+                </button>
+              </section>
+            ) : linkedCard ? (
               <section
                 aria-label="Phương thức thanh toán"
                 className="bg-white border border-gray-200 rounded-xl p-4 space-y-2.5"
@@ -382,15 +411,44 @@ export default function CartPage() {
                   if (checkoutMutation.isPending || exceedsLimit) {
                     return;
                   }
+                  if (!currentUser) {
+                    setSubmitError(null);
+                    setLoginModalMode("checkout");
+                    return;
+                  }
                   checkoutMutation.mutate();
                 }}
               >
-                Đặt món ngay · {formatVnd(estimatedAmount)}
+                {currentUser
+                  ? `Đặt món ngay · ${formatVnd(estimatedAmount)}`
+                  : `Đăng nhập SĐT Zalo & Đặt món · ${formatVnd(estimatedAmount)}`}
               </Button>
             </section>
           </>
         )}
       </main>
+
+      <ZaloPhoneLoginModal
+        isOpen={loginModalMode !== null}
+        title={
+          loginModalMode === "card"
+            ? "Đăng nhập để chọn Thẻ học sinh"
+            : "Xác thực SĐT Zalo để đặt món"
+        }
+        description={
+          loginModalMode === "card"
+            ? "Xác thực số điện thoại phụ huynh trên Zalo để tải danh sách thẻ học sinh đã liên kết."
+            : "Giỏ hàng của bạn được giữ nguyên. Xác thực số điện thoại Zalo để hoàn tất đặt đơn tại căn tin."
+        }
+        onClose={() => setLoginModalMode(null)}
+        onSuccess={() => {
+          openSnackbar({
+            text: "Đăng nhập thành công! Hãy kiểm tra phương thức thanh toán và nhấn Đặt món.",
+            duration: 2400,
+          });
+        }}
+      />
+
       <BottomNav />
     </Page>
   );

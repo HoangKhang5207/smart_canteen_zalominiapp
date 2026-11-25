@@ -1,9 +1,12 @@
 import React, { useState } from "react";
+import { useAtomValue } from "jotai";
 import { useQuery } from "@tanstack/react-query";
 import { Header, Page, useNavigate } from "zmp-ui";
 import { BottomNav } from "@/components/bottom-nav";
 import { PaginationBar } from "@/components/pagination-bar";
 import { EmptyState, ErrorState, LoadingState } from "@/components/state-views";
+import { ZaloPhoneLoginPanel } from "@/components/zalo-phone-login";
+import { authHydratedAtom, currentUserAtom } from "@/features/auth/store";
 import { fetchPaginatedMyOrders } from "@/features/orders/api";
 import { getOrderStatusMeta } from "@/features/orders/status";
 import { formatVnd } from "@/lib/format";
@@ -12,15 +15,22 @@ const ORDERS_PER_PAGE = 6;
 
 export default function OrdersPage() {
   const navigate = useNavigate();
+  const currentUser = useAtomValue(currentUserAtom);
+  const authHydrated = useAtomValue(authHydratedAtom);
   const [currentPage, setCurrentPage] = useState(1);
 
   const ordersQuery = useQuery({
-    queryKey: ["my-orders", { page: currentPage, perPage: ORDERS_PER_PAGE }],
+    queryKey: [
+      "my-orders",
+      currentUser?.id ?? null,
+      { page: currentPage, perPage: ORDERS_PER_PAGE },
+    ],
     queryFn: () =>
       fetchPaginatedMyOrders({
         page: currentPage,
         perPage: ORDERS_PER_PAGE,
       }),
+    enabled: Boolean(currentUser),
     refetchInterval: 10_000,
   });
 
@@ -34,7 +44,14 @@ export default function OrdersPage() {
         onBackClick={() => navigate("/")}
       />
       <main className="app-main space-y-3 max-w-2xl mx-auto">
-        {ordersQuery.isLoading ? (
+        {!authHydrated ? (
+          <LoadingState label="Đang kiểm tra phiên đăng nhập..." />
+        ) : !currentUser ? (
+          <ZaloPhoneLoginPanel
+            title="Đăng nhập để theo dõi đơn hàng"
+            description="Xác thực bằng số điện thoại Zalo của bạn để xem danh sách đơn hàng đã đặt và trạng thái chế biến tại căn tin."
+          />
+        ) : ordersQuery.isLoading ? (
           <LoadingState label="Đang tải lịch sử đơn hàng..." />
         ) : ordersQuery.error ? (
           <ErrorState

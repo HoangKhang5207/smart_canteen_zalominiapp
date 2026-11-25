@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useAtom, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Header, Page, useNavigate, useSnackbar } from "zmp-ui";
 import { BottomNav } from "@/components/bottom-nav";
@@ -7,6 +7,9 @@ import { SpendingLimitSheet } from "@/components/spending-limit-sheet";
 import { EmptyState, ErrorState, LoadingState } from "@/components/state-views";
 import { StudentCardView } from "@/components/student-card-view";
 import { UnlinkConfirmDialog } from "@/components/unlink-confirm-dialog";
+import { ZaloPhoneLoginPanel } from "@/components/zalo-phone-login";
+import { logoutSession } from "@/features/auth/api";
+import { authHydratedAtom, currentUserAtom } from "@/features/auth/store";
 import {
   createPosPurchase,
   fetchCardOrders,
@@ -18,6 +21,7 @@ import {
   bankLinkDraftAtom,
   bankLinkSuccessBannerAtom,
   EMPTY_BANK_LINK_FORM,
+  pendingOtpSessionAtom,
   pendingUnlinkOtpSessionAtom,
   selectedCardIdAtom,
 } from "@/features/canteen/store";
@@ -34,20 +38,26 @@ export default function CanteenHubPage() {
   const { openSnackbar } = useSnackbar();
   const queryClient = useQueryClient();
 
+  const currentUser = useAtomValue(currentUserAtom);
+  const authHydrated = useAtomValue(authHydratedAtom);
+
   const [selectedCardId, setSelectedCardId] = useAtom(selectedCardIdAtom);
   const [isLimitSheetOpen, setIsLimitSheetOpen] = useState(false);
   const [limitError, setLimitError] = useState<string | null>(null);
   const [posError, setPosError] = useState<string | null>(null);
   const [isUnlinkDialogOpen, setIsUnlinkDialogOpen] = useState(false);
   const [unlinkError, setUnlinkError] = useState<string | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const [successBanner, setSuccessBanner] = useAtom(bankLinkSuccessBannerAtom);
   const setDraft = useSetAtom(bankLinkDraftAtom);
+  const setPendingOtp = useSetAtom(pendingOtpSessionAtom);
   const setPendingUnlinkSession = useSetAtom(pendingUnlinkOtpSessionAtom);
 
   const cardsQuery = useQuery({
-    queryKey: ["canteen-cards"],
+    queryKey: ["canteen-cards", currentUser?.id ?? null],
     queryFn: fetchMyStudentCards,
+    enabled: Boolean(currentUser),
   });
 
   const cards = cardsQuery.data ?? [];
@@ -161,9 +171,38 @@ export default function CanteenHubPage() {
     setSuccessBanner(null);
     setDraft({
       cardId: activeCard.id,
-      values: { ...EMPTY_BANK_LINK_FORM },
+      values: {
+        ...EMPTY_BANK_LINK_FORM,
+        phone_number: currentUser?.phone ?? "",
+      },
     });
     navigate("/canteen/link-bank");
+  };
+
+  const handleLogout = async () => {
+    if (isLoggingOut) {
+      return;
+    }
+    setIsLoggingOut(true);
+    try {
+      await logoutSession();
+      setSelectedCardId(null);
+      setDraft(null);
+      setPendingOtp(null);
+      setPendingUnlinkSession(null);
+      setSuccessBanner(null);
+      queryClient.removeQueries({ queryKey: ["canteen-cards"] });
+      queryClient.removeQueries({ queryKey: ["canteen-card-orders"] });
+      queryClient.removeQueries({ queryKey: ["canteen-limit-logs"] });
+      queryClient.removeQueries({ queryKey: ["my-orders"] });
+      queryClient.removeQueries({ queryKey: ["order"] });
+      openSnackbar({
+        text: "Đã đăng xuất tài khoản phụ huynh.",
+        duration: 2000,
+      });
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   const recentOrders = recentOrdersQuery.data?.data ?? [];
@@ -217,7 +256,11 @@ export default function CanteenHubPage() {
           </div>
         ) : null}
 
-        {cardsQuery.isLoading ? (
+        {!authHydrated ? (
+          <LoadingState label="Đang kiểm tra phiên đăng nhập..." />
+        ) : !currentUser ? (
+          <ZaloPhoneLoginPanel />
+        ) : cardsQuery.isLoading ? (
           <LoadingState label="Đang tải thông tin thẻ học sinh..." />
         ) : cardsQuery.error ? (
           <ErrorState
@@ -230,13 +273,53 @@ export default function CanteenHubPage() {
             onRetry={() => void cardsQuery.refetch()}
           />
         ) : !activeCard ? (
-          <EmptyState
-            message="Tài khoản chưa được gắn thẻ học sinh thông minh."
-            actionLabel="Quay về Thực đơn"
-            onAction={() => navigate("/")}
-          />
+          <div className="space-y-3">
+            <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-center justify-between gap-2 text-xs">
+              <div className="min-w-0">
+                <p className="font-semibold text-gray-900 truncate">
+                  {currentUser.name}
+                </p>
+                <p className="text-gray-600 font-mono">
+                  {currentUser.phone_masked ?? "Tài khoản Zalo"}
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={isLoggingOut}
+                onClick={() => void handleLogout()}
+                className="px-2.5 py-1.5 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-brand-700"
+              >
+                {isLoggingOut ? "Đang thoát..." : "Đăng xuất"}
+              </button>
+            </div>
+            <EmptyState
+              message="Tài khoản chưa được gắn thẻ học sinh thông minh."
+              actionLabel="Quay về Thực đơn"
+              onAction={() => navigate("/")}
+            />
+          </div>
         ) : (
           <>
+            <div className="bg-white border border-gray-200 rounded-xl px-4 py-2.5 flex items-center justify-between gap-2 text-xs">
+              <div className="min-w-0">
+                <p className="font-semibold text-gray-900 truncate">
+                  Phụ huynh: {currentUser.name}
+                </p>
+                <p className="text-gray-600 font-mono">
+                  {currentUser.phone_masked
+                    ? `SĐT xác thực: ${currentUser.phone_masked}`
+                    : "Tài khoản Zalo"}
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={isLoggingOut}
+                onClick={() => void handleLogout()}
+                className="px-2.5 py-1.5 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-brand-700 shrink-0"
+              >
+                {isLoggingOut ? "Đang thoát..." : "Đăng xuất"}
+              </button>
+            </div>
             {cards.length > 1 ? (
               <div
                 className="flex gap-2 overflow-x-auto pb-1"
