@@ -14,16 +14,22 @@ export function getAuthToken(): string | null {
 export class ApiError extends Error {
   status: number;
   errors?: Record<string, string[]>;
+  errorCode?: string;
+  meta?: Record<string, unknown>;
 
   constructor(
     message: string,
     status: number,
     errors?: Record<string, string[]>,
+    errorCode?: string,
+    meta?: Record<string, unknown>,
   ) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.errors = errors;
+    this.errorCode = errorCode;
+    this.meta = meta;
   }
 }
 
@@ -59,7 +65,15 @@ async function parseResponse<T>(response: Response): Promise<T> {
       payload && typeof payload.errors === "object"
         ? (payload.errors as Record<string, string[]>)
         : undefined;
-    throw new ApiError(message, response.status, errors);
+    const errorCode =
+      payload && typeof payload.error_code === "string"
+        ? payload.error_code
+        : undefined;
+    const meta =
+      payload && typeof payload.meta === "object" && payload.meta !== null
+        ? (payload.meta as Record<string, unknown>)
+        : undefined;
+    throw new ApiError(message, response.status, errors, errorCode, meta);
   }
 
   return payload as T;

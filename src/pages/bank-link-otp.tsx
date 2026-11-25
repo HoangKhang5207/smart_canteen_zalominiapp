@@ -1,0 +1,334 @@
+import React, { useEffect, useRef, useState } from "react";
+import { useAtom, useSetAtom } from "jotai";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Header, Page, useNavigate } from "zmp-ui";
+import { OtpCodeInput } from "@/components/otp-code-input";
+import { EmptyState } from "@/components/state-views";
+import { resendBankLinkOtp, verifyBankLinkOtp } from "@/features/canteen/api";
+import {
+  bankLinkDraftAtom,
+  bankLinkSuccessBannerAtom,
+  pendingOtpSessionAtom,
+} from "@/features/canteen/store";
+import {
+  formatCountdown,
+  normalizeOtpDigits,
+} from "@/features/canteen/validation";
+import { ApiError } from "@/lib/api-client";
+
+function computeRemainingSeconds(deadlineMs: number): number {
+  return Math.max(0, Math.ceil((deadlineMs - Date.now()) / 1000));
+}
+
+export default function BankLinkOtpPage() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  const [session, setSession] = useAtom(pendingOtpSessionAtom);
+  const setDraft = useSetAtom(bankLinkDraftAtom);
+  const setSuccessBanner = useSetAtom(bankLinkSuccessBannerAtom);
+
+  const [otpCode, setOtpCode] = useState("");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isLockedOut, setIsLockedOut] = useState(false);
+
+  const expiresDeadlineRef = useRef<number>(0);
+  const resendDeadlineRef = useRef<number>(0);
+
+  const [expiresIn, setExpiresIn] = useState<number>(
+    session?.otp.expires_in_seconds ?? 0,
+  );
+  const [resendCooldown, setResendCooldown] = useState<number>(
+    session?.otp.resend_cooldown_seconds ?? 0,
+  );
+
+  useEffect(() => {
+    if (!session) {
+      return;
+    }
+    const now = Date.now();
+    expiresDeadlineRef.current = now + session.otp.expires_in_seconds * 1000;
+    resendDeadlineRef.current =
+      now + session.otp.resend_cooldown_seconds * 1000;
+
+    setOtpCode("");
+    setErrorMessage(null);
+    setIsLockedOut(false);
+    setExpiresIn(session.otp.expires_in_seconds);
+    setResendCooldown(session.otp.resend_cooldown_seconds);
+  }, [session]);
+
+  useEffect(() => {
+    if (!session) {
+      return;
+    }
+    const syncTimers = () => {
+      setExpiresIn(computeRemainingSeconds(expiresDeadlineRef.current));
+      setResendCooldown(computeRemainingSeconds(resendDeadlineRef.current));
+    };
+
+    const timer = window.setInterval(syncTimers, 1000);
+    document.addEventListener("visibilitychange", syncTimers);
+
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", syncTimers);
+    };
+  }, [session]);
+
+  const verifyMutation = useMutation({
+    mutationFn: async (code: string) => {
+      if (!session) {
+        throw new Error("Phiên xác thực OTP không tồn tại.");
+      }
+      return verifyBankLinkOtp(session.bank_link_id, code);
+    },
+    onSuccess: (updatedCard) => {
+      void queryClient.invalidateQueries({ queryKey: ["canteen-cards"] });
+      setDraft(null);
+      setSession(null);
+      setSuccessBanner(
+        `Đã liên kết ${updatedCard.bank_link?.bank_name ?? "ngân hàng"} (${updatedCard.bank_link?.account_number_masked ?? ""}) với thẻ ${updatedCard.card_code}.`,
+      );
+      navigate("/canteen");
+    },
+    onError: (err) => {
+      if (err instanceof ApiError) {
+        if (err.errorCode === "OTP_MAX_ATTEMPTS_EXCEEDED") {
+          setIsLockedOut(true);
+        } else if (err.errorCode === "OTP_EXPIRED") {
+          expiresDeadlineRef.current = 0;
+          setExpiresIn(0);
+        }
+        setErrorMessage(err.message);
+        return;
+      }
+      setErrorMessage(
+        err instanceof Error
+          ? err.message
+          : "Không thể xác thực mã OTP. Vui lòng thử lại.",
+      );
+    },
+  });
+
+  const resendMutation = useMutation({
+    mutationFn: async () => {
+      if (!session) {
+        throw new Error("Phiên xác thực OTP không tồn tại.");
+      }
+      return resendBankLinkOtp(session.bank_link_id);
+    },
+    onSuccess: (nextSession) => {
+      setSession(nextSession);
+    },
+    onError: (err) => {
+      if (err instanceof ApiError) {
+        if (err.errorCode === "OTP_MAX_ATTEMPTS_EXCEEDED") {
+          setIsLockedOut(true);
+        } else if (
+          err.errorCode === "OTP_RESEND_COOLDOWN" &&
+          typeof err.meta?.retry_after_seconds === "number"
+        ) {
+          resendDeadlineRef.current =
+            Date.now() + err.meta.retry_after_seconds * 1000;
+          setResendCooldown(err.meta.retry_after_seconds);
+        }
+      }
+      setErrorMessage(
+        err instanceof Error
+          ? err.message
+          : "Không thể gửi lại mã OTP lúc này.",
+      );
+    },
+  });
+
+  const handleVerifySubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (verifyMutation.isPending || isLockedOut) {
+      return;
+    }
+    const cleaned = normalizeOtpDigits(otpCode);
+    if (cleaned.length !== 6) {
+      setErrorMessage("Vui lòng nhập đầy đủ 6 chữ số OTP.");
+      return;
+    }
+    setErrorMessage(null);
+    verifyMutation.mutate(cleaned);
+  };
+
+  const handleResendClick = () => {
+    if (
+      resendMutation.isPending ||
+      isLockedOut ||
+      resendCooldown > 0 ||
+      !session ||
+      session.otp.remaining_resends <= 0
+    ) {
+      return;
+    }
+    resendMutation.mutate();
+  };
+
+  if (!session) {
+    return (
+      <Page className="bg-surface-muted min-h-screen">
+        <Header
+          title="Xác thực OTP"
+          onBackClick={() => navigate("/canteen")}
+        />
+        <main className="app-main max-w-2xl mx-auto">
+          <EmptyState
+            message="Phiên xác thực OTP đã kết thúc hoặc không tồn tại."
+            actionLabel="Quay lại Căn tin số"
+            onAction={() => navigate("/canteen")}
+          />
+        </main>
+      </Page>
+    );
+  }
+
+  const isExpired = expiresIn <= 0;
+  const remainingResends = session.otp.remaining_resends;
+  const canResend =
+    !isLockedOut &&
+    resendCooldown <= 0 &&
+    remainingResends > 0 &&
+    !resendMutation.isPending;
+
+  return (
+    <Page className="bg-surface-muted min-h-screen pb-10">
+      <Header
+        title="Xác thực OTP"
+        onBackClick={() => navigate("/canteen/link-bank")}
+      />
+
+      <main className="app-main max-w-2xl mx-auto space-y-4">
+        <section className="bg-white border border-gray-200 rounded-xl p-5 space-y-4">
+          <div className="text-center space-y-1.5">
+            <h2 className="text-base font-bold text-gray-900">
+              Nhập mã xác thực OTP
+            </h2>
+            <p className="text-xs text-gray-600 leading-relaxed">
+              Mã OTP gồm 6 chữ số đã được gửi tới số điện thoại{" "}
+              <strong className="font-mono text-gray-900">
+                {session.phone_masked}
+              </strong>{" "}
+              để xác nhận liên kết <strong>{session.bank_name}</strong> (
+              <span className="font-mono">{session.account_number_masked}</span>
+              ).
+            </p>
+            <p className="text-xs font-medium text-brand-700">
+              {isLockedOut
+                ? "Phiên OTP đã bị khóa — vui lòng quay lại đăng ký liên kết mới"
+                : isExpired
+                  ? "Mã OTP đã hết hạn — vui lòng gửi lại mã mới"
+                  : `Hiệu lực còn lại: ${formatCountdown(expiresIn)}`}
+            </p>
+          </div>
+
+          {session.otp.debug_otp ? (
+            <div
+              role="note"
+              className="rounded-lg bg-brand-50 border border-brand-500/40 p-3 flex items-center justify-between gap-2 text-xs"
+            >
+              <div>
+                <p className="font-semibold text-brand-900">
+                  Chế độ Demo Local — Mã OTP mô phỏng
+                </p>
+                <p className="font-mono text-sm font-bold tracking-widest text-brand-700">
+                  {session.otp.debug_otp}
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={isLockedOut || verifyMutation.isPending}
+                onClick={() => {
+                  setOtpCode(session.otp.debug_otp ?? "");
+                  setErrorMessage(null);
+                }}
+                className="px-2.5 py-1.5 rounded-md text-xs font-semibold bg-brand-700 text-white hover:bg-brand-800 disabled:bg-gray-300 disabled:text-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-700"
+              >
+                Điền nhanh
+              </button>
+            </div>
+          ) : null}
+
+          <form onSubmit={handleVerifySubmit} className="space-y-4">
+            <OtpCodeInput
+              value={otpCode}
+              onChange={(next) => {
+                setOtpCode(next);
+                if (errorMessage) {
+                  setErrorMessage(null);
+                }
+              }}
+              disabled={verifyMutation.isPending || isLockedOut}
+              hasError={Boolean(errorMessage)}
+            />
+
+            {errorMessage ? (
+              <p
+                role="alert"
+                className="text-xs text-center text-red-700 bg-red-50 border border-red-200 rounded-lg p-2.5 font-medium"
+              >
+                {errorMessage}
+              </p>
+            ) : null}
+
+            <button
+              type="submit"
+              disabled={
+                verifyMutation.isPending ||
+                isLockedOut ||
+                isExpired ||
+                otpCode.length !== 6
+              }
+              className="w-full py-3 px-4 rounded-lg text-sm font-semibold text-white bg-brand-700 hover:bg-brand-800 disabled:bg-gray-300 disabled:text-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-700"
+            >
+              {verifyMutation.isPending
+                ? "Đang xác thực..."
+                : "Xác nhận mã OTP"}
+            </button>
+          </form>
+
+          <div className="pt-2 border-t border-gray-100 flex flex-col items-center gap-2 text-xs">
+            {isLockedOut ? (
+              <button
+                type="button"
+                onClick={() => navigate("/canteen/link-bank")}
+                className="font-semibold text-brand-700 hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-700 rounded px-2 py-1"
+              >
+                Đăng ký liên kết lại từ đầu
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  disabled={!canResend}
+                  onClick={handleResendClick}
+                  className="font-semibold text-brand-700 hover:text-brand-800 disabled:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-700 rounded px-2 py-1"
+                >
+                  {resendMutation.isPending
+                    ? "Đang gửi lại mã OTP..."
+                    : remainingResends <= 0
+                      ? "Đã hết lượt gửi lại mã OTP"
+                      : resendCooldown > 0
+                        ? `Gửi lại mã OTP sau ${resendCooldown}s (còn ${remainingResends} lượt)`
+                        : `Gửi lại mã OTP (còn ${remainingResends} lượt)`}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => navigate("/canteen/link-bank")}
+                  className="text-gray-600 hover:text-gray-900 underline focus:outline-none focus:ring-2 focus:ring-brand-700 rounded px-2 py-1"
+                >
+                  Sai số điện thoại? Quay lại chỉnh sửa thông tin
+                </button>
+              </>
+            )}
+          </div>
+        </section>
+      </main>
+    </Page>
+  );
+}
