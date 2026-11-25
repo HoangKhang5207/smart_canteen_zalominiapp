@@ -1,47 +1,65 @@
-# Zalo Mini App
+# Smart Canteen Mini App — Zalo Mini App (React 18 + TypeScript + ZaUI)
 
-## Development
+Sub-repository độc lập cho tầng Frontend khách hàng của hệ thống **Smart Canteen**: Zalo Mini App xây dựng bằng React 18, TypeScript, ZaUI (`zmp-ui`), Jotai, TanStack Query và Tailwind CSS.
 
-### Using Zalo Mini App Extension
+## Yêu cầu môi trường
 
-1. Install [Visual Studio Code](https://code.visualstudio.com/download) and [Zalo Mini App Extension](https://mini.zalo.me/docs/dev-tools).
-1. In the **Home** tab, process **Config App ID** and **Install Dependencies**.
-1. Navigate to the **Run** tab, select the suitable launcher, and click **Start**.
+- **Khuyến nghị (Docker):** Docker Engine 24+ & Docker Compose V2.
+- **Chạy thủ công trên host:** Node.js `24.x` (tối thiểu `20+`), npm `10+`.
 
-### Using Zalo Mini App CLI
+## Khởi chạy nhanh với Docker
 
-1. [Install Node JS](https://nodejs.org/en/download/).
-1. [Install Zalo Mini App CLI](https://mini.zalo.me/docs/dev-tools/cli/intro/).
-1. **Install dependencies**:
-   ```bash
-   npm install
-   ```
-1. **Start** the dev server:
-   ```bash
-   zmp start
-   ```
-1. **Open** `localhost:3000` in your browser.
+### Local / Dev (Vite Dev Server :3000)
 
-## Deployment
+```bash
+cp .env.example .env
+docker compose up -d --build
+```
 
-1. **Create** a mini program. For instructions on how to create a mini program, please refer to the [Coffee Shop Tutorial](https://mini.zalo.me/tutorial/coffee-shop/step-1/)
+Truy cập `http://localhost:3000` (ứng dụng gọi API tại `VITE_API_BASE_URL`, mặc định `http://localhost:8000/api/v1`).
 
-1. **Deploy** your mini program to Zalo using the mini app ID created.
+### Production-like Build (Nginx Unprivileged :8080 -> host :3000)
 
-   - **Using Zalo Mini App Extension**: navigate to the **Deploy** panel > **Login** > **Deploy**.
-   - **Using Zalo Mini App CLI**:
-     ```bash
-     zmp login
-     zmp deploy
-     ```
+```bash
+docker compose -f compose.yaml -f compose.prod.yaml up -d --build
+```
 
-1. Open the mini app in Zalo by scanning the QR code.
+- **App:** `http://localhost:3000`
+- **Healthcheck:** `http://localhost:3000/healthz`
 
-## Resources
+Production image được build multi-stage (`node:24-alpine` chạy `tsc --noEmit && npm run build`) và phục vụ static bundle `www/` qua `nginxinc/nginx-unprivileged:1.27-alpine` chạy non-root.
 
-- [Zalo Mini App Official Website](https://mini.zalo.me/)
-- [ZaUI Documentation](https://mini.zalo.me/documents/zaui/)
-- [ZMP SDK Documentation](https://mini.zalo.me/documents/api/)
-- [DevTools Documentation](https://mini.zalo.me/docs/dev-tools/)
-- [Ready-made Mini App Templates](https://mini.zalo.me/zaui-templates)
-- [Community Support](https://mini.zalo.me/community)
+## Chạy thủ công trên Host & Kiểm thử
+
+```bash
+npm ci
+npm run dev
+
+# Cổng kiểm soát chất lượng (Quality Gates)
+npx tsc --noEmit
+npm test
+npm run build
+```
+
+## Triển khai lên Zalo Mini App (Khi được cấp quyền)
+
+```bash
+zmp login
+zmp deploy
+```
+
+## GitHub Actions CI
+
+Pipeline tự động tại [.github/workflows/ci.yml](.github/workflows/ci.yml) chạy trên `push` và `pull_request` (`main`, `develop`):
+1. `quality-and-test`: Node 24, `npm ci`, `npx tsc --noEmit`, Vitest (`npm test`), Vite build (`www/index.html`).
+2. `security-audit`: `npm audit --omit=dev --audit-level=high`.
+3. `docker-build`: Validate Compose, build production image và smoke test non-root UID + `GET /healthz` + `GET /`.
+
+## Gắn Remote GitHub cho Sub-repo độc lập
+
+```bash
+git remote add origin https://github.com/<org-or-user>/smart-canteen-miniapp.git
+git branch -M main
+# Sau khi kiểm tra và merge nhánh làm việc vào main:
+git push -u origin main
+```
