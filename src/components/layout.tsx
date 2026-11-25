@@ -14,6 +14,9 @@ import {
   subscribeAuthUser,
 } from "@/features/auth/api";
 import { authErrorAtom, currentUserAtom } from "@/features/auth/store";
+import BankLinkFormPage from "@/pages/bank-link-form";
+import BankLinkOtpPage from "@/pages/bank-link-otp";
+import CanteenHubPage from "@/pages/canteen";
 import CartPage from "@/pages/cart";
 import MenuPage from "@/pages/menu";
 import OrderDetailPage from "@/pages/order-detail";
@@ -77,6 +80,9 @@ const Layout = () => {
             <ZMPRouter>
               <AnimationRoutes>
                 <Route path="/" element={<MenuPage />} />
+                <Route path="/canteen" element={<CanteenHubPage />} />
+                <Route path="/canteen/link-bank" element={<BankLinkFormPage />} />
+                <Route path="/canteen/verify-otp" element={<BankLinkOtpPage />} />
                 <Route path="/products/:id" element={<ProductDetailPage />} />
                 <Route path="/cart" element={<CartPage />} />
                 <Route path="/orders" element={<OrdersPage />} />
