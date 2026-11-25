@@ -10,10 +10,14 @@ import {
 } from "zmp-ui";
 
 import {
-  ensureAuthenticated,
+  hydrateAuthSession,
   subscribeAuthUser,
 } from "@/features/auth/api";
-import { authErrorAtom, currentUserAtom } from "@/features/auth/store";
+import {
+  authErrorAtom,
+  authHydratedAtom,
+  currentUserAtom,
+} from "@/features/auth/store";
 import BankLinkFormPage from "@/pages/bank-link-form";
 import BankLinkOtpPage from "@/pages/bank-link-otp";
 import BankUnlinkOtpPage from "@/pages/bank-unlink-otp";
@@ -37,6 +41,7 @@ const queryClient = new QueryClient({
 
 function AuthBootstrap({ children }: { children: React.ReactNode }) {
   const setCurrentUser = useSetAtom(currentUserAtom);
+  const setAuthHydrated = useSetAtom(authHydratedAtom);
   const setAuthError = useSetAtom(authErrorAtom);
 
   useEffect(() => {
@@ -50,25 +55,25 @@ function AuthBootstrap({ children }: { children: React.ReactNode }) {
       }
     });
 
-    ensureAuthenticated()
+    hydrateAuthSession()
       .then((user) => {
         if (active) {
           setCurrentUser(user);
           setAuthError(null);
+          setAuthHydrated(true);
         }
       })
-      .catch((err) => {
+      .catch(() => {
         if (active) {
-          setAuthError(
-            err instanceof Error ? err.message : "Không thể định danh tài khoản",
-          );
+          setCurrentUser(null);
+          setAuthHydrated(true);
         }
       });
     return () => {
       active = false;
       unsubscribe();
     };
-  }, [setCurrentUser, setAuthError]);
+  }, [setCurrentUser, setAuthHydrated, setAuthError]);
 
   return <>{children}</>;
 }

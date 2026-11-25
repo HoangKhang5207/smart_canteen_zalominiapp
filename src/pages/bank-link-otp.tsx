@@ -1,9 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useAtom, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Header, Page, useNavigate } from "zmp-ui";
 import { OtpCodeInput } from "@/components/otp-code-input";
-import { EmptyState } from "@/components/state-views";
+import { EmptyState, LoadingState } from "@/components/state-views";
+import { ZaloPhoneLoginPanel } from "@/components/zalo-phone-login";
+import { authHydratedAtom, currentUserAtom } from "@/features/auth/store";
 import { resendBankLinkOtp, verifyBankLinkOtp } from "@/features/canteen/api";
 import {
   bankLinkDraftAtom,
@@ -23,6 +25,8 @@ function computeRemainingSeconds(deadlineMs: number): number {
 export default function BankLinkOtpPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const currentUser = useAtomValue(currentUserAtom);
+  const authHydrated = useAtomValue(authHydratedAtom);
 
   const [session, setSession] = useAtom(pendingOtpSessionAtom);
   const setDraft = useSetAtom(bankLinkDraftAtom);
@@ -168,6 +172,34 @@ export default function BankLinkOtpPage() {
     }
     resendMutation.mutate();
   };
+
+  if (!authHydrated) {
+    return (
+      <Page className="bg-surface-muted min-h-screen">
+        <Header
+          title="Xác thực OTP"
+          onBackClick={() => navigate("/canteen")}
+        />
+        <main className="app-main max-w-2xl mx-auto">
+          <LoadingState label="Đang kiểm tra phiên đăng nhập..." />
+        </main>
+      </Page>
+    );
+  }
+
+  if (!currentUser) {
+    return (
+      <Page className="bg-surface-muted min-h-screen">
+        <Header
+          title="Xác thực OTP"
+          onBackClick={() => navigate("/canteen")}
+        />
+        <main className="app-main max-w-2xl mx-auto">
+          <ZaloPhoneLoginPanel title="Đăng nhập để xác thực OTP" />
+        </main>
+      </Page>
+    );
+  }
 
   if (!session) {
     return (

@@ -86,6 +86,8 @@ export interface OtpChallengeMeta {
   remaining_attempts: number;
   max_resends: number;
   remaining_resends: number;
+  delivery_channel?: string;
+  delivery_provider?: string;
   debug_otp?: string;
 }
 

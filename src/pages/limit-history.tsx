@@ -1,10 +1,12 @@
 import React, { useState } from "react";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { useQuery } from "@tanstack/react-query";
 import { Header, Page, useNavigate } from "zmp-ui";
 import { BottomNav } from "@/components/bottom-nav";
 import { PaginationBar } from "@/components/pagination-bar";
 import { EmptyState, ErrorState, LoadingState } from "@/components/state-views";
+import { ZaloPhoneLoginPanel } from "@/components/zalo-phone-login";
+import { authHydratedAtom, currentUserAtom } from "@/features/auth/store";
 import {
   fetchCardLimitLogs,
   fetchMyStudentCards,
@@ -16,12 +18,15 @@ const LOGS_PER_PAGE = 10;
 
 export default function LimitHistoryPage() {
   const navigate = useNavigate();
+  const currentUser = useAtomValue(currentUserAtom);
+  const authHydrated = useAtomValue(authHydratedAtom);
   const [page, setPage] = useState(1);
   const [selectedCardId, setSelectedCardId] = useAtom(selectedCardIdAtom);
 
   const cardsQuery = useQuery({
-    queryKey: ["canteen-cards"],
+    queryKey: ["canteen-cards", currentUser?.id ?? null],
     queryFn: fetchMyStudentCards,
+    enabled: Boolean(currentUser),
   });
 
   const cards = cardsQuery.data ?? [];
@@ -50,7 +55,11 @@ export default function LimitHistoryPage() {
       />
 
       <main className="app-main max-w-2xl mx-auto space-y-3">
-        {cardsQuery.isLoading || (activeCard && logsQuery.isLoading) ? (
+        {!authHydrated ? (
+          <LoadingState label="Đang kiểm tra phiên đăng nhập..." />
+        ) : !currentUser ? (
+          <ZaloPhoneLoginPanel title="Đăng nhập để xem lịch sử hạn mức" />
+        ) : cardsQuery.isLoading || (activeCard && logsQuery.isLoading) ? (
           <LoadingState label="Đang tải lịch sử thay đổi hạn mức..." />
         ) : cardsQuery.error || logsQuery.error ? (
           <ErrorState

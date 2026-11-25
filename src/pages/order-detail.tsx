@@ -1,8 +1,11 @@
 import React from "react";
+import { useAtomValue } from "jotai";
 import { useQuery } from "@tanstack/react-query";
 import { Box, Button, Header, Page, Text, useNavigate, useParams } from "zmp-ui";
 import { BottomNav } from "@/components/bottom-nav";
 import { ErrorState, LoadingState } from "@/components/state-views";
+import { ZaloPhoneLoginPanel } from "@/components/zalo-phone-login";
+import { authHydratedAtom, currentUserAtom } from "@/features/auth/store";
 import { fetchOrder } from "@/features/orders/api";
 import { getOrderStatusMeta } from "@/features/orders/status";
 import { ApiError } from "@/lib/api-client";
@@ -18,13 +21,15 @@ const WORKFLOW_STEPS = [
 export default function OrderDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const currentUser = useAtomValue(currentUserAtom);
+  const authHydrated = useAtomValue(authHydratedAtom);
   const orderId = Number(id);
   const isValidId = Number.isInteger(orderId) && orderId > 0;
 
   const orderQuery = useQuery({
-    queryKey: ["order", orderId],
+    queryKey: ["order", currentUser?.id ?? null, orderId],
     queryFn: () => fetchOrder(orderId),
-    enabled: isValidId,
+    enabled: isValidId && Boolean(currentUser),
     refetchInterval: (query) => {
       const data = query.state.data;
       if (!data) {
@@ -60,7 +65,14 @@ export default function OrderDetailPage() {
         onBackClick={() => navigate("/orders")}
       />
       <main className="app-main space-y-4 max-w-2xl mx-auto">
-        {isNotFound ? (
+        {!authHydrated ? (
+          <LoadingState label="Đang kiểm tra phiên đăng nhập..." />
+        ) : !currentUser ? (
+          <ZaloPhoneLoginPanel
+            title="Đăng nhập để xem chi tiết đơn hàng"
+            description="Xác thực số điện thoại Zalo để xem hóa đơn, món đã mua và hạn mức chi tiêu của thẻ học sinh."
+          />
+        ) : isNotFound ? (
           <Box
             role="status"
             className="bg-white border border-gray-200 rounded-xl p-6 text-center space-y-4"

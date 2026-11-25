@@ -1,9 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Header, Page, useNavigate } from "zmp-ui";
 import { OtpCodeInput } from "@/components/otp-code-input";
-import { EmptyState } from "@/components/state-views";
+import { EmptyState, LoadingState } from "@/components/state-views";
+import { ZaloPhoneLoginPanel } from "@/components/zalo-phone-login";
+import { authHydratedAtom, currentUserAtom } from "@/features/auth/store";
 import {
   resendBankUnlinkOtp,
   verifyBankUnlinkOtp,
@@ -29,6 +31,8 @@ interface UnlinkSuccessInfo {
 export default function BankUnlinkOtpPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const currentUser = useAtomValue(currentUserAtom);
+  const authHydrated = useAtomValue(authHydratedAtom);
 
   const [session, setSession] = useAtom(pendingUnlinkOtpSessionAtom);
 
@@ -267,6 +271,34 @@ export default function BankUnlinkOtpPage() {
               Quay về Căn tin số
             </button>
           </section>
+        </main>
+      </Page>
+    );
+  }
+
+  if (!authHydrated) {
+    return (
+      <Page className="bg-surface-muted min-h-screen">
+        <Header
+          title="Xác thực hủy liên kết"
+          onBackClick={() => navigate("/canteen")}
+        />
+        <main className="app-main max-w-2xl mx-auto">
+          <LoadingState label="Đang kiểm tra phiên đăng nhập..." />
+        </main>
+      </Page>
+    );
+  }
+
+  if (!currentUser) {
+    return (
+      <Page className="bg-surface-muted min-h-screen">
+        <Header
+          title="Xác thực hủy liên kết"
+          onBackClick={() => navigate("/canteen")}
+        />
+        <main className="app-main max-w-2xl mx-auto">
+          <ZaloPhoneLoginPanel title="Đăng nhập để xác thực hủy liên kết" />
         </main>
       </Page>
     );
