@@ -1,5 +1,8 @@
 import React, { useRef } from "react";
-import { normalizeOtpDigits } from "@/features/canteen/validation";
+import {
+  applyOtpSlotChange,
+  normalizeOtpDigits,
+} from "@/features/canteen/validation";
 
 interface OtpCodeInputProps {
   value: string;
@@ -21,26 +24,24 @@ export function OtpCodeInput({
   const digits = normalizeOtpDigits(value);
 
   const focusSlot = (index: number) => {
-    const target = inputRefs.current[Math.max(0, Math.min(OTP_LENGTH - 1, index))];
+    const target =
+      inputRefs.current[Math.max(0, Math.min(OTP_LENGTH - 1, index))];
     target?.focus();
     target?.select();
   };
 
   const handleDigitChange = (index: number, rawInput: string) => {
     const cleaned = normalizeOtpDigits(rawInput);
-    if (cleaned.length > 1) {
-      onChange(cleaned);
-      focusSlot(Math.min(cleaned.length, OTP_LENGTH - 1));
+    const next = applyOtpSlotChange(digits, index, rawInput);
+    onChange(next);
+
+    if (cleaned.length >= OTP_LENGTH) {
+      focusSlot(OTP_LENGTH - 1);
       return;
     }
 
-    const chars = digits.padEnd(OTP_LENGTH, " ").split("");
-    chars[index] = cleaned || " ";
-    const next = chars.join("").replace(/\s+/g, "").slice(0, OTP_LENGTH);
-    onChange(next);
-
-    if (cleaned && index < OTP_LENGTH - 1) {
-      focusSlot(index + 1);
+    if (cleaned.length > 0 && index < OTP_LENGTH - 1) {
+      focusSlot(Math.min(next.length, index + 1));
     }
   };
 
@@ -97,6 +98,7 @@ export function OtpCodeInput({
           aria-label={`Chữ số OTP thứ ${index + 1}`}
           aria-invalid={hasError ? "true" : undefined}
           value={digits[index] ?? ""}
+          onFocus={(e) => e.currentTarget.select()}
           onChange={(e) => handleDigitChange(index, e.target.value)}
           onKeyDown={(e) => handleKeyDown(index, e)}
           onPaste={handlePaste}

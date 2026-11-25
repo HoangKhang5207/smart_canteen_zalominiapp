@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useAtom, useSetAtom } from "jotai";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Header, Page, useNavigate } from "zmp-ui";
@@ -16,6 +16,10 @@ import {
 } from "@/features/canteen/validation";
 import { ApiError } from "@/lib/api-client";
 
+function computeRemainingSeconds(deadlineMs: number): number {
+  return Math.max(0, Math.ceil((deadlineMs - Date.now()) / 1000));
+}
+
 export default function BankLinkOtpPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -27,6 +31,10 @@ export default function BankLinkOtpPage() {
   const [otpCode, setOtpCode] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLockedOut, setIsLockedOut] = useState(false);
+
+  const expiresDeadlineRef = useRef<number>(0);
+  const resendDeadlineRef = useRef<number>(0);
+
   const [expiresIn, setExpiresIn] = useState<number>(
     session?.otp.expires_in_seconds ?? 0,
   );
@@ -38,20 +46,34 @@ export default function BankLinkOtpPage() {
     if (!session) {
       return;
     }
+    const now = Date.now();
+    expiresDeadlineRef.current = now + session.otp.expires_in_seconds * 1000;
+    resendDeadlineRef.current =
+      now + session.otp.resend_cooldown_seconds * 1000;
+
+    setOtpCode("");
+    setErrorMessage(null);
+    setIsLockedOut(false);
     setExpiresIn(session.otp.expires_in_seconds);
     setResendCooldown(session.otp.resend_cooldown_seconds);
-    setIsLockedOut(false);
   }, [session]);
 
   useEffect(() => {
     if (!session) {
       return;
     }
-    const timer = window.setInterval(() => {
-      setExpiresIn((prev) => (prev > 0 ? prev - 1 : 0));
-      setResendCooldown((prev) => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-    return () => window.clearInterval(timer);
+    const syncTimers = () => {
+      setExpiresIn(computeRemainingSeconds(expiresDeadlineRef.current));
+      setResendCooldown(computeRemainingSeconds(resendDeadlineRef.current));
+    };
+
+    const timer = window.setInterval(syncTimers, 1000);
+    document.addEventListener("visibilitychange", syncTimers);
+
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", syncTimers);
+    };
   }, [session]);
 
   const verifyMutation = useMutation({
@@ -74,6 +96,9 @@ export default function BankLinkOtpPage() {
       if (err instanceof ApiError) {
         if (err.errorCode === "OTP_MAX_ATTEMPTS_EXCEEDED") {
           setIsLockedOut(true);
+        } else if (err.errorCode === "OTP_EXPIRED") {
+          expiresDeadlineRef.current = 0;
+          setExpiresIn(0);
         }
         setErrorMessage(err.message);
         return;
@@ -95,17 +120,19 @@ export default function BankLinkOtpPage() {
     },
     onSuccess: (nextSession) => {
       setSession(nextSession);
-      setOtpCode("");
-      setErrorMessage(null);
-      setIsLockedOut(false);
     },
     onError: (err) => {
-      if (
-        err instanceof ApiError &&
-        err.errorCode === "OTP_RESEND_COOLDOWN" &&
-        typeof err.meta?.retry_after_seconds === "number"
-      ) {
-        setResendCooldown(err.meta.retry_after_seconds);
+      if (err instanceof ApiError) {
+        if (err.errorCode === "OTP_MAX_ATTEMPTS_EXCEEDED") {
+          setIsLockedOut(true);
+        } else if (
+          err.errorCode === "OTP_RESEND_COOLDOWN" &&
+          typeof err.meta?.retry_after_seconds === "number"
+        ) {
+          resendDeadlineRef.current =
+            Date.now() + err.meta.retry_after_seconds * 1000;
+          setResendCooldown(err.meta.retry_after_seconds);
+        }
       }
       setErrorMessage(
         err instanceof Error
@@ -117,6 +144,9 @@ export default function BankLinkOtpPage() {
 
   const handleVerifySubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (verifyMutation.isPending || isLockedOut) {
+      return;
+    }
     const cleaned = normalizeOtpDigits(otpCode);
     if (cleaned.length !== 6) {
       setErrorMessage("Vui lòng nhập đầy đủ 6 chữ số OTP.");
@@ -124,6 +154,19 @@ export default function BankLinkOtpPage() {
     }
     setErrorMessage(null);
     verifyMutation.mutate(cleaned);
+  };
+
+  const handleResendClick = () => {
+    if (
+      resendMutation.isPending ||
+      isLockedOut ||
+      resendCooldown > 0 ||
+      !session ||
+      session.otp.remaining_resends <= 0
+    ) {
+      return;
+    }
+    resendMutation.mutate();
   };
 
   if (!session) {
@@ -147,7 +190,10 @@ export default function BankLinkOtpPage() {
   const isExpired = expiresIn <= 0;
   const remainingResends = session.otp.remaining_resends;
   const canResend =
-    resendCooldown <= 0 && remainingResends > 0 && !resendMutation.isPending;
+    !isLockedOut &&
+    resendCooldown <= 0 &&
+    remainingResends > 0 &&
+    !resendMutation.isPending;
 
   return (
     <Page className="bg-surface-muted min-h-screen pb-10">
@@ -172,9 +218,11 @@ export default function BankLinkOtpPage() {
               ).
             </p>
             <p className="text-xs font-medium text-brand-700">
-              {isExpired
-                ? "Mã OTP đã hết hạn — vui lòng gửi lại mã mới"
-                : `Hiệu lực còn lại: ${formatCountdown(expiresIn)}`}
+              {isLockedOut
+                ? "Phiên OTP đã bị khóa — vui lòng quay lại đăng ký liên kết mới"
+                : isExpired
+                  ? "Mã OTP đã hết hạn — vui lòng gửi lại mã mới"
+                  : `Hiệu lực còn lại: ${formatCountdown(expiresIn)}`}
             </p>
           </div>
 
@@ -193,11 +241,12 @@ export default function BankLinkOtpPage() {
               </div>
               <button
                 type="button"
+                disabled={isLockedOut || verifyMutation.isPending}
                 onClick={() => {
                   setOtpCode(session.otp.debug_otp ?? "");
                   setErrorMessage(null);
                 }}
-                className="px-2.5 py-1.5 rounded-md text-xs font-semibold bg-brand-700 text-white hover:bg-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-700"
+                className="px-2.5 py-1.5 rounded-md text-xs font-semibold bg-brand-700 text-white hover:bg-brand-800 disabled:bg-gray-300 disabled:text-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-700"
               >
                 Điền nhanh
               </button>
@@ -243,28 +292,40 @@ export default function BankLinkOtpPage() {
           </form>
 
           <div className="pt-2 border-t border-gray-100 flex flex-col items-center gap-2 text-xs">
-            <button
-              type="button"
-              disabled={!canResend}
-              onClick={() => resendMutation.mutate()}
-              className="font-semibold text-brand-700 hover:text-brand-800 disabled:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-700 rounded px-2 py-1"
-            >
-              {resendMutation.isPending
-                ? "Đang gửi lại mã OTP..."
-                : remainingResends <= 0
-                  ? "Đã hết lượt gửi lại mã OTP"
-                  : resendCooldown > 0
-                    ? `Gửi lại mã OTP sau ${resendCooldown}s (còn ${remainingResends} lượt)`
-                    : `Gửi lại mã OTP (còn ${remainingResends} lượt)`}
-            </button>
+            {isLockedOut ? (
+              <button
+                type="button"
+                onClick={() => navigate("/canteen/link-bank")}
+                className="font-semibold text-brand-700 hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-700 rounded px-2 py-1"
+              >
+                Đăng ký liên kết lại từ đầu
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  disabled={!canResend}
+                  onClick={handleResendClick}
+                  className="font-semibold text-brand-700 hover:text-brand-800 disabled:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-700 rounded px-2 py-1"
+                >
+                  {resendMutation.isPending
+                    ? "Đang gửi lại mã OTP..."
+                    : remainingResends <= 0
+                      ? "Đã hết lượt gửi lại mã OTP"
+                      : resendCooldown > 0
+                        ? `Gửi lại mã OTP sau ${resendCooldown}s (còn ${remainingResends} lượt)`
+                        : `Gửi lại mã OTP (còn ${remainingResends} lượt)`}
+                </button>
 
-            <button
-              type="button"
-              onClick={() => navigate("/canteen/link-bank")}
-              className="text-gray-600 hover:text-gray-900 underline focus:outline-none focus:ring-2 focus:ring-brand-700 rounded px-2 py-1"
-            >
-              Sai số điện thoại? Quay lại chỉnh sửa thông tin
-            </button>
+                <button
+                  type="button"
+                  onClick={() => navigate("/canteen/link-bank")}
+                  className="text-gray-600 hover:text-gray-900 underline focus:outline-none focus:ring-2 focus:ring-brand-700 rounded px-2 py-1"
+                >
+                  Sai số điện thoại? Quay lại chỉnh sửa thông tin
+                </button>
+              </>
+            )}
           </div>
         </section>
       </main>

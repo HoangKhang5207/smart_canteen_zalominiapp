@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { SupportedBank } from "./types";
 import {
+  applyOtpSlotChange,
   formatCountdown,
   normalizeOtpDigits,
   validateBankLinkForm,
@@ -83,5 +84,13 @@ describe("OTP helpers", () => {
     expect(formatCountdown(65)).toBe("01:05");
     expect(formatCountdown(0)).toBe("00:00");
     expect(formatCountdown(-5)).toBe("00:00");
+  });
+
+  it("edits a middle OTP digit without wiping the rest of the 6-digit code", () => {
+    expect(applyOtpSlotChange("123456", 2, "39")).toBe("129456");
+    expect(applyOtpSlotChange("123456", 2, "93")).toBe("129456");
+    expect(applyOtpSlotChange("123456", 2, "9")).toBe("129456");
+    expect(applyOtpSlotChange("123456", 0, "654321")).toBe("654321");
+    expect(applyOtpSlotChange("123456", 2, "")).toBe("12456");
   });
 });

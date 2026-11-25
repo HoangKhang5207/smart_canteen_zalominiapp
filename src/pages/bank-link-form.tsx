@@ -126,6 +126,9 @@ export default function BankLinkFormPage() {
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (initiateMutation.isPending) {
+      return;
+    }
     setSubmitError(null);
 
     const validationErrors = validateBankLinkForm(values, selectedBank);

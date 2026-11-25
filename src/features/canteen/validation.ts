@@ -69,6 +69,50 @@ export function normalizeOtpDigits(raw: string): string {
   return raw.replace(/\D+/g, "").slice(0, 6);
 }
 
+export function applyOtpSlotChange(
+  currentValue: string,
+  slotIndex: number,
+  rawInput: string,
+): string {
+  const digits = normalizeOtpDigits(currentValue);
+  const cleaned = normalizeOtpDigits(rawInput);
+
+  // Full OTP paste / SMS autofill replaces the entire 6-digit value
+  if (cleaned.length >= 6) {
+    return cleaned.slice(0, 6);
+  }
+
+  const existingDigit = digits[slotIndex] ?? "";
+  let nextDigit = "";
+
+  if (cleaned.length === 1) {
+    nextDigit = cleaned;
+  } else if (cleaned.length > 1) {
+    // User typed into a filled box without selecting all (e.g. "39" or "93")
+    if (existingDigit && cleaned[0] === existingDigit) {
+      nextDigit = cleaned[cleaned.length - 1];
+    } else {
+      nextDigit = cleaned[0];
+    }
+  }
+
+  if (nextDigit === "") {
+    if (slotIndex < digits.length) {
+      return digits.slice(0, slotIndex) + digits.slice(slotIndex + 1);
+    }
+    return digits;
+  }
+
+  const chars = digits.split("");
+  if (slotIndex < chars.length) {
+    chars[slotIndex] = nextDigit;
+  } else {
+    chars.push(nextDigit);
+  }
+
+  return chars.join("").slice(0, 6);
+}
+
 export function formatCountdown(totalSeconds: number): string {
   const clamped = Math.max(0, Math.floor(totalSeconds));
   const minutes = Math.floor(clamped / 60);
