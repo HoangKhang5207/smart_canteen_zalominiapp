@@ -40,3 +40,22 @@ export function canPayWithStudentCard(
 ): boolean {
   return requiredAmount > 0 && remainingLimit >= requiredAmount;
 }
+
+export function getRemainingBarTone(
+  remainingPct: number,
+): "red" | "amber" | "brand" {
+  if (remainingPct <= 0) {
+    return "red";
+  }
+  if (remainingPct <= 20) {
+    return "amber";
+  }
+  return "brand";
+}
+
+export function canUnlinkBankAccount(
+  cardStatus: "ACTIVE" | "LOCKED" | "REVOKED",
+  isBankLinked: boolean,
+): boolean {
+  return isBankLinked && cardStatus !== "REVOKED";
+}

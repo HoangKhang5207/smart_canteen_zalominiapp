@@ -16,10 +16,20 @@ export interface PendingBankLinkDraft {
   values: BankLinkFormValues;
 }
 
+export interface PendingUnlinkOtpSession {
+  initiation: BankLinkInitiationData;
+  cardCode: string;
+  studentName: string;
+}
+
 export const selectedCardIdAtom = atom<number | null>(null);
 
 export const bankLinkDraftAtom = atom<PendingBankLinkDraft | null>(null);
 
 export const pendingOtpSessionAtom = atom<BankLinkInitiationData | null>(null);
+
+export const pendingUnlinkOtpSessionAtom = atom<PendingUnlinkOtpSession | null>(
+  null,
+);
 
 export const bankLinkSuccessBannerAtom = atom<string | null>(null);

@@ -179,6 +179,7 @@ export default function OrderDetailPage() {
                   <dt className="text-gray-600">Thời gian</dt>
                   <dd className="text-gray-900 font-medium">
                     {new Date(order.created_at).toLocaleString("vi-VN", {
+                      timeZone: "Asia/Ho_Chi_Minh",
                       hour: "2-digit",
                       minute: "2-digit",
                       day: "2-digit",

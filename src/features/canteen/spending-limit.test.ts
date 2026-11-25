@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   QUICK_LIMIT_PRESETS,
   canPayWithStudentCard,
+  canUnlinkBankAccount,
+  getRemainingBarTone,
   parseLimitInput,
   validateDailyLimit,
 } from "./spending-limit";
@@ -33,5 +35,19 @@ describe("spending-limit helpers", () => {
     expect(canPayWithStudentCard(50_000, 50_000)).toBe(true);
     expect(canPayWithStudentCard(55_000, 50_000)).toBe(false);
     expect(canPayWithStudentCard(10_000, 0)).toBe(false);
+  });
+
+  it("maps remaining percentage to high-contrast progress bar tones", () => {
+    expect(getRemainingBarTone(0)).toBe("red");
+    expect(getRemainingBarTone(15)).toBe("amber");
+    expect(getRemainingBarTone(20)).toBe("amber");
+    expect(getRemainingBarTone(50)).toBe("brand");
+  });
+
+  it("allows unlinking linked bank accounts on ACTIVE and LOCKED cards, but not REVOKED or unlinked", () => {
+    expect(canUnlinkBankAccount("ACTIVE", true)).toBe(true);
+    expect(canUnlinkBankAccount("LOCKED", true)).toBe(true);
+    expect(canUnlinkBankAccount("REVOKED", true)).toBe(false);
+    expect(canUnlinkBankAccount("ACTIVE", false)).toBe(false);
   });
 });
