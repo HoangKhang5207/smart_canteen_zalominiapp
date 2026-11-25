@@ -1,14 +1,22 @@
+import {
+  type PaginatedResult,
+  type PaginationMeta,
+  normalizePaginatedResult,
+} from "@/components/pagination-bar";
 import { ensureAuthenticated } from "@/features/auth/api";
-import { apiGet, apiPost } from "@/lib/api-client";
+import type { Order } from "@/features/orders/types";
+import { apiGet, apiPost, apiPut } from "@/lib/api-client";
 import type {
   BankLinkFormValues,
   BankLinkInitiationData,
+  SpendingLimitLog,
   StudentCard,
   SupportedBank,
 } from "./types";
 
 interface ListResponse<T> {
   data: T[];
+  meta?: Partial<PaginationMeta>;
 }
 
 interface ItemResponse<T> {
@@ -66,6 +74,81 @@ export async function resendBankLinkOtp(
   await ensureAuthenticated();
   const response = await apiPost<ItemResponse<BankLinkInitiationData>>(
     `/canteen/bank-links/${bankLinkId}/resend-otp`,
+  );
+  return response.data;
+}
+
+export async function updateCardSpendingLimit(
+  cardId: number,
+  dailyLimit: number,
+  reason?: string,
+): Promise<StudentCard> {
+  await ensureAuthenticated();
+  const response = await apiPut<ItemResponse<StudentCard>>(
+    `/canteen/cards/${cardId}/spending-limit`,
+    {
+      daily_limit: dailyLimit,
+      reason: reason && reason.trim() !== "" ? reason.trim() : undefined,
+    },
+  );
+  return response.data;
+}
+
+export async function fetchCardLimitLogs(
+  cardId: number,
+  query?: { page?: number; perPage?: number },
+): Promise<PaginatedResult<SpendingLimitLog>> {
+  await ensureAuthenticated();
+  const response = await apiGet<ListResponse<SpendingLimitLog>>(
+    `/canteen/cards/${cardId}/limit-logs`,
+    {
+      page: query?.page,
+      per_page: query?.perPage,
+    },
+  );
+  return normalizePaginatedResult(
+    response,
+    query?.page ?? 1,
+    query?.perPage ?? 10,
+  );
+}
+
+export async function fetchCardOrders(
+  cardId: number,
+  query?: { page?: number; perPage?: number },
+): Promise<PaginatedResult<Order>> {
+  await ensureAuthenticated();
+  const response = await apiGet<ListResponse<Order>>(
+    `/canteen/cards/${cardId}/orders`,
+    {
+      page: query?.page,
+      per_page: query?.perPage,
+    },
+  );
+  return normalizePaginatedResult(
+    response,
+    query?.page ?? 1,
+    query?.perPage ?? 4,
+  );
+}
+
+export async function createPosPurchase(
+  cardId: number,
+  input: {
+    items: { product_id: number; quantity: number }[];
+    store_name?: string;
+  },
+  idempotencyKey: string,
+): Promise<Order> {
+  await ensureAuthenticated();
+  const response = await apiPost<ItemResponse<Order>>(
+    `/canteen/cards/${cardId}/pos-purchases`,
+    input,
+    {
+      headers: {
+        "Idempotency-Key": idempotencyKey,
+      },
+    },
   );
   return response.data;
 }

@@ -168,6 +168,16 @@ export default function BankLinkFormPage() {
             actionLabel="Quay lại Căn tin số"
             onAction={() => navigate("/canteen")}
           />
+        ) : targetCard.is_bank_linked || targetCard.status !== "ACTIVE" ? (
+          <EmptyState
+            message={
+              targetCard.is_bank_linked
+                ? "Thẻ học sinh này đã được liên kết với một tài khoản ngân hàng."
+                : "Thẻ học sinh hiện không ở trạng thái hoạt động nên chưa thể liên kết ngân hàng."
+            }
+            actionLabel="Quay lại Căn tin số"
+            onAction={() => navigate("/canteen")}
+          />
         ) : (
           <form onSubmit={handleSubmit} noValidate className="space-y-4">
             <div className="bg-brand-50 border border-brand-100 rounded-xl p-3 flex items-center justify-between gap-2 text-xs">
@@ -214,33 +224,46 @@ export default function BankLinkFormPage() {
                 <div
                   role="radiogroup"
                   aria-label="Danh sách ngân hàng hỗ trợ"
+                  aria-describedby={
+                    fieldErrors.bank_code ? "bank-code-error" : undefined
+                  }
                   className="grid grid-cols-2 gap-2"
                 >
-                  {filteredBanks.map((bank) => {
-                    const isSelected = values.bank_code === bank.code;
-                    return (
-                      <button
-                        key={bank.code}
-                        type="button"
-                        role="radio"
-                        aria-checked={isSelected}
-                        onClick={() => updateField("bank_code", bank.code)}
-                        className={`text-left px-3 py-2.5 rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-brand-700 ${
-                          isSelected
-                            ? "border-brand-700 bg-brand-50 text-brand-900"
-                            : "border-gray-200 bg-white text-gray-800 hover:border-brand-500"
-                        }`}
-                      >
-                        <p className="text-xs font-bold">{bank.short_name}</p>
-                        <p className="text-[11px] text-gray-500 font-mono">
-                          {bank.code}
-                        </p>
-                      </button>
-                    );
-                  })}
+                  {filteredBanks.length === 0 ? (
+                    <p className="col-span-2 text-xs text-gray-600 py-2 text-center">
+                      Không tìm thấy ngân hàng phù hợp với từ khóa.
+                    </p>
+                  ) : (
+                    filteredBanks.map((bank) => {
+                      const isSelected = values.bank_code === bank.code;
+                      return (
+                        <button
+                          key={bank.code}
+                          type="button"
+                          role="radio"
+                          aria-checked={isSelected}
+                          onClick={() => updateField("bank_code", bank.code)}
+                          className={`text-left px-3 py-2.5 rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-brand-700 ${
+                            isSelected
+                              ? "border-brand-700 bg-brand-50 text-brand-900"
+                              : "border-gray-200 bg-white text-gray-800 hover:border-brand-500"
+                          }`}
+                        >
+                          <p className="text-xs font-bold">{bank.short_name}</p>
+                          <p className="text-[11px] text-gray-600 font-mono">
+                            {bank.code}
+                          </p>
+                        </button>
+                      );
+                    })
+                  )}
                 </div>
                 {fieldErrors.bank_code ? (
-                  <p role="alert" className="text-xs text-red-700">
+                  <p
+                    id="bank-code-error"
+                    role="alert"
+                    className="text-xs text-red-700"
+                  >
                     {fieldErrors.bank_code}
                   </p>
                 ) : null}
@@ -411,7 +434,7 @@ export default function BankLinkFormPage() {
                   htmlFor="email"
                   className="block text-xs font-semibold text-gray-700"
                 >
-                  Email <span className="text-gray-400 font-normal">(không bắt buộc)</span>
+                  Email <span className="text-gray-600 font-normal">(không bắt buộc)</span>
                 </label>
                 <input
                   id="email"
@@ -442,6 +465,10 @@ export default function BankLinkFormPage() {
                 <input
                   type="checkbox"
                   checked={values.agreed_terms}
+                  aria-invalid={fieldErrors.agreed_terms ? "true" : undefined}
+                  aria-describedby={
+                    fieldErrors.agreed_terms ? "agreed-terms-error" : undefined
+                  }
                   onChange={(e) =>
                     updateField("agreed_terms", e.target.checked)
                   }
@@ -454,7 +481,11 @@ export default function BankLinkFormPage() {
                 </span>
               </label>
               {fieldErrors.agreed_terms ? (
-                <p role="alert" className="text-xs text-red-700">
+                <p
+                  id="agreed-terms-error"
+                  role="alert"
+                  className="text-xs text-red-700"
+                >
                   {fieldErrors.agreed_terms}
                 </p>
               ) : null}

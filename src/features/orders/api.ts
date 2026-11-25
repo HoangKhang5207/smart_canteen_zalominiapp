@@ -5,7 +5,7 @@ import {
 } from "@/components/pagination-bar";
 import { ensureAuthenticated } from "@/features/auth/api";
 import { apiGet, apiPost } from "@/lib/api-client";
-import type { Order } from "./types";
+import type { Order, PaymentMethod } from "./types";
 
 interface DataEnvelope<T> {
   data: T;
@@ -15,6 +15,8 @@ interface DataEnvelope<T> {
 export interface CreateOrderInput {
   items: { product_id: number; quantity: number }[];
   note?: string;
+  student_card_id?: number;
+  payment_method?: Extract<PaymentMethod, "COUNTER_CASH" | "STUDENT_CARD">;
 }
 
 export async function createOrder(

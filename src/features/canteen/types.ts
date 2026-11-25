@@ -38,6 +38,22 @@ export interface BankLinkSummary {
   linked_at: string | null;
 }
 
+export interface SpendingLimitSummary {
+  daily_limit: number;
+  spent_today: number;
+  remaining_limit: number;
+  effective_date: string;
+}
+
+export interface SpendingLimitLog {
+  id: number;
+  previous_limit: number;
+  new_limit: number;
+  reason: string | null;
+  changed_by_name?: string | null;
+  created_at: string;
+}
+
 export interface StudentCard {
   id: number;
   card_code: string;
@@ -46,6 +62,7 @@ export interface StudentCard {
   student: StudentProfile;
   is_bank_linked: boolean;
   bank_link: BankLinkSummary | null;
+  spending_limit: SpendingLimitSummary;
 }
 
 export interface BankLinkFormValues {

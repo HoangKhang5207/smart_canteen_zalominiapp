@@ -18,6 +18,7 @@ import BankLinkFormPage from "@/pages/bank-link-form";
 import BankLinkOtpPage from "@/pages/bank-link-otp";
 import CanteenHubPage from "@/pages/canteen";
 import CartPage from "@/pages/cart";
+import LimitHistoryPage from "@/pages/limit-history";
 import MenuPage from "@/pages/menu";
 import OrderDetailPage from "@/pages/order-detail";
 import OrdersPage from "@/pages/orders";
@@ -83,6 +84,7 @@ const Layout = () => {
                 <Route path="/canteen" element={<CanteenHubPage />} />
                 <Route path="/canteen/link-bank" element={<BankLinkFormPage />} />
                 <Route path="/canteen/verify-otp" element={<BankLinkOtpPage />} />
+                <Route path="/canteen/limit-history" element={<LimitHistoryPage />} />
                 <Route path="/products/:id" element={<ProductDetailPage />} />
                 <Route path="/cart" element={<CartPage />} />
                 <Route path="/orders" element={<OrdersPage />} />

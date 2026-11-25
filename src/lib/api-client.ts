@@ -129,6 +129,23 @@ export async function apiPost<T>(
   body?: unknown,
   options?: { headers?: Record<string, string> },
 ): Promise<T> {
+  return apiMutate<T>("POST", path, body, options);
+}
+
+export async function apiPut<T>(
+  path: string,
+  body?: unknown,
+  options?: { headers?: Record<string, string> },
+): Promise<T> {
+  return apiMutate<T>("PUT", path, body, options);
+}
+
+async function apiMutate<T>(
+  method: "POST" | "PUT",
+  path: string,
+  body?: unknown,
+  options?: { headers?: Record<string, string> },
+): Promise<T> {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   const url = `${getBaseUrl()}${normalizedPath}`;
 
@@ -137,7 +154,7 @@ export async function apiPost<T>(
 
   try {
     const response = await fetch(url, {
-      method: "POST",
+      method,
       headers: buildHeaders({
         "Content-Type": "application/json",
         ...(options?.headers ?? {}),
