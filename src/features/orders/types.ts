@@ -8,9 +8,23 @@ export type OrderStatus =
 export type PaymentMethod =
   | "COUNTER_CASH"
   | "STUDENT_CARD"
-  | "STUDENT_CARD_POS";
+  | "STUDENT_CARD_POS"
+  | "VNPAY";
 
-export type PaymentStatus = "UNPAID" | "PAID" | "REFUNDED";
+export type PaymentStatus =
+  | "UNPAID"
+  | "PAID"
+  | "REFUNDED"
+  | "FAILED"
+  | "PENDING_RECONCILE";
+
+export interface VnpayPaymentUrlData {
+  payment_url: string;
+  txn_ref: string;
+  amount: number;
+  expires_at: string;
+  simulated: boolean;
+}
 
 export interface OrderItem {
   id: number;
