@@ -3,13 +3,31 @@ import type { CartItem, CartTotals } from "./types";
 
 export const MAX_ITEM_QUANTITY = 20;
 
+export function getMaxAddableQuantity(product: Pick<Product, "is_available" | "stock_quantity">): number {
+  if (!product.is_available) {
+    return 0;
+  }
+  if (product.stock_quantity === null || product.stock_quantity === undefined) {
+    return MAX_ITEM_QUANTITY;
+  }
+  return Math.max(0, Math.min(MAX_ITEM_QUANTITY, Math.floor(product.stock_quantity)));
+}
+
+export function isProductInStock(product: Pick<Product, "is_available" | "stock_quantity" | "is_in_stock">): boolean {
+  if (product.is_in_stock !== undefined) {
+    return product.is_in_stock;
+  }
+  return getMaxAddableQuantity(product) > 0;
+}
+
 export function addCartItem(
   items: CartItem[],
   product: Product,
   quantityToAdd = 1,
 ): CartItem[] {
   const normalizedAdd = Math.floor(quantityToAdd);
-  if (!product.is_available || normalizedAdd <= 0) {
+  const maxAllowed = getMaxAddableQuantity(product);
+  if (maxAllowed <= 0 || normalizedAdd <= 0) {
     return items;
   }
 
@@ -22,7 +40,7 @@ export function addCartItem(
       ...items,
       {
         product,
-        quantity: Math.min(MAX_ITEM_QUANTITY, normalizedAdd),
+        quantity: Math.min(maxAllowed, normalizedAdd),
       },
     ];
   }
@@ -31,7 +49,7 @@ export function addCartItem(
     idx === existingIndex
       ? {
           product,
-          quantity: Math.min(MAX_ITEM_QUANTITY, entry.quantity + normalizedAdd),
+          quantity: Math.min(maxAllowed, entry.quantity + normalizedAdd),
         }
       : entry,
   );
@@ -47,14 +65,20 @@ export function updateCartQuantity(
     return removeCartItem(items, productId);
   }
 
-  return items.map((entry) =>
-    entry.product.id === productId
-      ? {
-          ...entry,
-          quantity: Math.min(MAX_ITEM_QUANTITY, normalized),
-        }
-      : entry,
-  );
+  return items.reduce<CartItem[]>((acc, entry) => {
+    if (entry.product.id !== productId) {
+      acc.push(entry);
+      return acc;
+    }
+    const maxAllowed = getMaxAddableQuantity(entry.product);
+    if (maxAllowed > 0) {
+      acc.push({
+        ...entry,
+        quantity: Math.min(maxAllowed, normalized),
+      });
+    }
+    return acc;
+  }, []);
 }
 
 export function removeCartItem(

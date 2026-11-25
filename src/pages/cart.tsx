@@ -11,9 +11,9 @@ import { fetchMyStudentCards } from "@/features/canteen/api";
 import { canPayWithStudentCard } from "@/features/canteen/spending-limit";
 import { selectedCardIdAtom } from "@/features/canteen/store";
 import {
-  MAX_ITEM_QUANTITY,
   computeCartFingerprint,
   createIdempotencyKey,
+  getMaxAddableQuantity,
   removeCartItem,
   updateCartQuantity,
 } from "@/features/cart/cart-logic";
@@ -116,6 +116,9 @@ export default function CartPage() {
       void queryClient.invalidateQueries({ queryKey: ["my-orders"] });
       void queryClient.invalidateQueries({ queryKey: ["canteen-cards"] });
       void queryClient.invalidateQueries({ queryKey: ["canteen-card-orders"] });
+      void queryClient.invalidateQueries({ queryKey: ["products"] });
+      void queryClient.invalidateQueries({ queryKey: ["product"] });
+      void queryClient.invalidateQueries({ queryKey: ["canteen-pos-sample-products"] });
       openSnackbar({
         text: `Đặt đơn thành công (${order.code})`,
         duration: 2200,
@@ -189,7 +192,7 @@ export default function CartPage() {
                       <button
                         type="button"
                         aria-label={`Tăng số lượng ${product.name}`}
-                        disabled={quantity >= MAX_ITEM_QUANTITY}
+                        disabled={quantity >= Math.max(1, getMaxAddableQuantity(product))}
                         onClick={() =>
                           setItems((prev) =>
                             updateCartQuantity(prev, product.id, quantity + 1),
@@ -248,6 +251,39 @@ export default function CartPage() {
                   role="radiogroup"
                   aria-label="Chọn phương thức thanh toán"
                   className="space-y-2"
+                  onKeyDown={(e) => {
+                    if ((e.target as HTMLElement | null)?.getAttribute("role") !== "radio") {
+                      return;
+                    }
+                    if (
+                      e.key !== "ArrowDown" &&
+                      e.key !== "ArrowRight" &&
+                      e.key !== "ArrowUp" &&
+                      e.key !== "ArrowLeft"
+                    ) {
+                      return;
+                    }
+                    e.preventDefault();
+                    const options: Array<"STUDENT_CARD" | "VNPAY" | "COUNTER_CASH"> =
+                      linkedCard
+                        ? ["STUDENT_CARD", "VNPAY", "COUNTER_CASH"]
+                        : ["VNPAY", "COUNTER_CASH"];
+                    const currentIdx = Math.max(
+                      0,
+                      options.indexOf(effectivePaymentMethod),
+                    );
+                    const delta =
+                      e.key === "ArrowDown" || e.key === "ArrowRight" ? 1 : -1;
+                    const nextIdx =
+                      (currentIdx + delta + options.length) % options.length;
+                    setPaymentChoice(options[nextIdx]);
+                    setSubmitError(null);
+                    const radios =
+                      e.currentTarget.querySelectorAll<HTMLButtonElement>(
+                        '[role="radio"]',
+                      );
+                    radios[nextIdx]?.focus();
+                  }}
                 >
                   {linkedCard ? (
                     <>

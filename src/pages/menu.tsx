@@ -8,7 +8,7 @@ import { PaginationBar } from "@/components/pagination-bar";
 import { ProductImage } from "@/components/product-image";
 import { EmptyState, ErrorState, LoadingState } from "@/components/state-views";
 import { currentUserAtom } from "@/features/auth/store";
-import { addCartItem } from "@/features/cart/cart-logic";
+import { addCartItem, isProductInStock } from "@/features/cart/cart-logic";
 import { cartItemsAtom, cartTotalsAtom } from "@/features/cart/store";
 import { fetchCategories, fetchPaginatedProducts } from "@/features/menu/api";
 import type { Category, Product } from "@/features/menu/types";
@@ -82,6 +82,13 @@ function ProductCard({
   onOpen: (id: number) => void;
   onAdd: (product: Product) => void;
 }) {
+  const inStock = isProductInStock(product);
+  const isLowStock =
+    inStock &&
+    product.stock_quantity !== null &&
+    product.stock_quantity !== undefined &&
+    product.stock_quantity <= (product.low_stock_threshold ?? 5);
+
   return (
     <li className="bg-white border border-gray-200 rounded-xl p-3 flex items-start gap-3 hover:border-brand-500 transition-colors">
       <button
@@ -99,9 +106,13 @@ function ProductCard({
             <h2 className="text-base font-semibold text-gray-900 truncate">
               {product.name}
             </h2>
-            {!product.is_available ? (
+            {!inStock ? (
               <span className="shrink-0 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-200 text-gray-700">
                 Hết món
+              </span>
+            ) : isLowStock ? (
+              <span className="shrink-0 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-900">
+                Còn {product.stock_quantity}
               </span>
             ) : null}
           </div>
@@ -116,7 +127,7 @@ function ProductCard({
         </div>
       </button>
 
-      {product.is_available ? (
+      {inStock ? (
         <button
           type="button"
           onClick={() => onAdd(product)}

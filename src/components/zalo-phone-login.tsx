@@ -13,6 +13,7 @@ import { ApiError } from "@/lib/api-client";
 import { useFocusTrap } from "@/lib/use-focus-trap";
 
 const DEMO_PHONE_DEFAULT = "0901234567";
+const DEMO_STUDENT_PHONE = "0901234568";
 const ALLOW_DEMO_PHONE_UI =
   import.meta.env.VITE_DEMO_PHONE_LOGIN !== "false";
 
@@ -154,24 +155,37 @@ function ZaloPhoneLoginContent({
           className="pt-3 border-t border-gray-200 space-y-2.5"
           noValidate
         >
-          <div className="flex items-center justify-between gap-2">
+          <div className="space-y-1.5">
             <label
               htmlFor="demo-phone-input"
-              className="text-xs font-semibold text-gray-700"
+              className="block text-xs font-semibold text-gray-700"
             >
-              Chế độ Demo Local — Nhập SĐT phụ huynh
+              Chế độ Demo Local — Nhập SĐT phụ huynh hoặc học sinh
             </label>
-            <button
-              type="button"
-              disabled={isBusy}
-              onClick={() => {
-                setPhoneInput(DEMO_PHONE_DEFAULT);
-                setErrorMessage(null);
-              }}
-              className="text-[11px] font-semibold text-brand-700 hover:text-brand-800 underline focus:outline-none focus:ring-2 focus:ring-brand-700 rounded px-1"
-            >
-              Dùng SĐT mẫu ({DEMO_PHONE_DEFAULT})
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={isBusy}
+                onClick={() => {
+                  setPhoneInput(DEMO_PHONE_DEFAULT);
+                  setErrorMessage(null);
+                }}
+                className="text-[11px] font-semibold text-brand-700 hover:text-brand-800 underline focus:outline-none focus:ring-2 focus:ring-brand-700 rounded px-1"
+              >
+                Phụ huynh ({DEMO_PHONE_DEFAULT})
+              </button>
+              <button
+                type="button"
+                disabled={isBusy}
+                onClick={() => {
+                  setPhoneInput(DEMO_STUDENT_PHONE);
+                  setErrorMessage(null);
+                }}
+                className="text-[11px] font-semibold text-blue-700 hover:text-blue-800 underline focus:outline-none focus:ring-2 focus:ring-blue-700 rounded px-1"
+              >
+                Học sinh ({DEMO_STUDENT_PHONE})
+              </button>
+            </div>
           </div>
           <div className="flex gap-2">
             <input

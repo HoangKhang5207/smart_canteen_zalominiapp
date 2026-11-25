@@ -14,7 +14,9 @@ import {
 export interface AuthUser {
   id: number;
   name: string;
-  role: "customer" | "staff" | "admin";
+  role: "customer" | "parent" | "student" | "staff" | "admin";
+  effective_role?: "parent" | "student" | "staff" | "admin";
+  can_manage_canteen?: boolean;
   zalo_user_id: string | null;
   phone?: string | null;
   phone_masked?: string | null;

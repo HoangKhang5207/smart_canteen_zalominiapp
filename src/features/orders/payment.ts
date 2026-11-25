@@ -54,6 +54,10 @@ export function formatPaymentError(err: unknown, fallback: string): string {
         return `${base} Lưu ý: Không bấm đặt lại ngay lập tức — hãy kiểm tra mục Đơn hàng để tránh trừ tiền hai lần.`;
       case "SPENDING_LIMIT_EXCEEDED":
         return `${base} Gợi ý: Phụ huynh có thể điều chỉnh hạn mức chi tiêu trong mục Căn tin Số.`;
+      case "INSUFFICIENT_STOCK":
+        return `${base} Gợi ý: Vui lòng giảm số lượng hoặc chọn món khác đang còn hàng.`;
+      case "PARENT_ROLE_REQUIRED":
+        return `${base} Gợi ý: Chức năng này yêu cầu đăng nhập bằng tài khoản Phụ huynh.`;
       default:
         return base;
     }
