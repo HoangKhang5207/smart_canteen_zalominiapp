@@ -173,6 +173,13 @@ export default function BankLinkFormPage() {
           <LoadingState label="Đang kiểm tra phiên đăng nhập..." />
         ) : !currentUser ? (
           <ZaloPhoneLoginPanel title="Đăng nhập để liên kết ngân hàng" />
+        ) : currentUser.can_manage_canteen === false ||
+          currentUser.role === "student" ? (
+          <EmptyState
+            message="Chức năng liên kết tài khoản ngân hàng chỉ dành cho tài khoản Phụ huynh. Vui lòng liên hệ phụ huynh để kích hoạt thẻ."
+            actionLabel="Quay lại Căn tin số"
+            onAction={() => navigate("/canteen")}
+          />
         ) : isLoading ? (
           <LoadingState label="Đang tải danh sách ngân hàng..." />
         ) : loadError ? (

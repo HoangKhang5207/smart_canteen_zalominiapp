@@ -11,4 +11,7 @@ export interface Product {
   price: number;
   image_url: string | null;
   is_available: boolean;
+  stock_quantity?: number | null;
+  low_stock_threshold?: number;
+  is_in_stock?: boolean;
 }

@@ -30,7 +30,7 @@ import {
   canUnlinkBankAccount,
   getRemainingBarTone,
 } from "@/features/canteen/spending-limit";
-import { createIdempotencyKey } from "@/features/cart/cart-logic";
+import { createIdempotencyKey, isProductInStock } from "@/features/cart/cart-logic";
 import { fetchProducts } from "@/features/menu/api";
 import { formatVnd } from "@/lib/format";
 
@@ -60,6 +60,11 @@ export default function CanteenHubPage() {
     queryFn: fetchMyStudentCards,
     enabled: Boolean(currentUser),
   });
+
+  const canManageCanteen =
+    currentUser?.can_manage_canteen ??
+    (currentUser?.role !== "student");
+  const isStudentAccount = currentUser?.role === "student";
 
   const cards = cardsQuery.data ?? [];
   const activeCard =
@@ -123,6 +128,9 @@ export default function CanteenHubPage() {
       void queryClient.invalidateQueries({ queryKey: ["canteen-cards"] });
       void queryClient.invalidateQueries({ queryKey: ["canteen-card-orders"] });
       void queryClient.invalidateQueries({ queryKey: ["my-orders"] });
+      void queryClient.invalidateQueries({ queryKey: ["products"] });
+      void queryClient.invalidateQueries({ queryKey: ["product"] });
+      void queryClient.invalidateQueries({ queryKey: ["canteen-pos-sample-products"] });
       openSnackbar({
         text: `Quẹt thẻ thành công (${order.code})`,
         duration: 2200,
@@ -196,7 +204,7 @@ export default function CanteenHubPage() {
       queryClient.removeQueries({ queryKey: ["my-orders"] });
       queryClient.removeQueries({ queryKey: ["order"] });
       openSnackbar({
-        text: "Đã đăng xuất tài khoản phụ huynh.",
+        text: "Đã đăng xuất tài khoản.",
         duration: 2000,
       });
     } finally {
@@ -206,7 +214,7 @@ export default function CanteenHubPage() {
 
   const recentOrders = recentOrdersQuery.data?.data ?? [];
   const availableDemoProduct = (sampleProductsQuery.data ?? []).find(
-    (p) => p.is_available,
+    (p) => isProductInStock(p),
   );
 
   const dailyLimit = activeCard?.spending_limit.daily_limit ?? 0;
@@ -302,7 +310,7 @@ export default function CanteenHubPage() {
             <div className="bg-white border border-gray-200 rounded-xl px-4 py-2.5 flex items-center justify-between gap-2 text-xs">
               <div className="min-w-0">
                 <p className="font-semibold text-gray-900 truncate">
-                  Phụ huynh: {currentUser.name}
+                  {isStudentAccount ? "Học sinh" : "Phụ huynh"}: {currentUser.name}
                 </p>
                 <p className="text-gray-600 font-mono">
                   {currentUser.phone_masked
@@ -319,6 +327,14 @@ export default function CanteenHubPage() {
                 {isLoggingOut ? "Đang thoát..." : "Đăng xuất"}
               </button>
             </div>
+            {isStudentAccount ? (
+              <div
+                role="status"
+                className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-900"
+              >
+                <strong>Chế độ Tài khoản Học sinh:</strong> Bạn có thể xem thẻ, hạn mức còn lại hôm nay và lịch sử mua hàng. Các thao tác liên kết ngân hàng và thay đổi hạn mức chỉ dành cho tài khoản Phụ huynh.
+              </div>
+            ) : null}
             {cards.length > 1 ? (
               <div
                 className="flex gap-2 overflow-x-auto pb-1"
@@ -402,18 +418,20 @@ export default function CanteenHubPage() {
                     </p>
                   ) : null}
 
-                  <div className="grid grid-cols-2 gap-2.5 pt-1">
-                    <button
-                      type="button"
-                      disabled={!isCardActive}
-                      onClick={() => {
-                        setLimitError(null);
-                        setIsLimitSheetOpen(true);
-                      }}
-                      className="py-2.5 px-3 rounded-lg text-xs font-semibold text-white bg-brand-700 hover:bg-brand-800 disabled:bg-gray-300 disabled:text-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-700"
-                    >
-                      Thiết lập hạn mức
-                    </button>
+                  <div className={`grid gap-2.5 pt-1 ${canManageCanteen ? "grid-cols-2" : "grid-cols-1"}`}>
+                    {canManageCanteen ? (
+                      <button
+                        type="button"
+                        disabled={!isCardActive}
+                        onClick={() => {
+                          setLimitError(null);
+                          setIsLimitSheetOpen(true);
+                        }}
+                        className="py-2.5 px-3 rounded-lg text-xs font-semibold text-white bg-brand-700 hover:bg-brand-800 disabled:bg-gray-300 disabled:text-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-700"
+                      >
+                        Thiết lập hạn mức
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       onClick={() => navigate("/canteen/limit-history")}
@@ -579,7 +597,7 @@ export default function CanteenHubPage() {
                     </div>
                   </dl>
 
-                  {canUnlink ? (
+                  {canUnlink && canManageCanteen ? (
                     <div className="pt-2 border-t border-gray-100">
                       <button
                         type="button"
@@ -618,14 +636,20 @@ export default function CanteenHubPage() {
                   </p>
                 ) : null}
 
-                <button
-                  type="button"
-                  disabled={activeCard.status !== "ACTIVE"}
-                  onClick={handleStartBankLink}
-                  className="w-full py-3 px-4 rounded-lg text-sm font-semibold text-white bg-brand-700 hover:bg-brand-800 disabled:bg-gray-300 disabled:text-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-700"
-                >
-                  Liên kết tài khoản ngân hàng
-                </button>
+                {canManageCanteen ? (
+                  <button
+                    type="button"
+                    disabled={activeCard.status !== "ACTIVE"}
+                    onClick={handleStartBankLink}
+                    className="w-full py-3 px-4 rounded-lg text-sm font-semibold text-white bg-brand-700 hover:bg-brand-800 disabled:bg-gray-300 disabled:text-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-700"
+                  >
+                    Liên kết tài khoản ngân hàng
+                  </button>
+                ) : (
+                  <p className="text-xs text-blue-900 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    Thẻ học sinh chưa được phụ huynh liên kết tài khoản ngân hàng. Hãy nhờ phụ huynh đăng nhập bằng tài khoản Phụ huynh để kích hoạt.
+                  </p>
+                )}
               </section>
             )}
 
@@ -645,7 +669,7 @@ export default function CanteenHubPage() {
       </main>
 
       <SpendingLimitSheet
-        isOpen={isLimitSheetOpen}
+        isOpen={canManageCanteen && isLimitSheetOpen}
         cardLabel={
           activeCard
             ? `${activeCard.student.full_name} · Thẻ ${activeCard.card_code}`
@@ -660,9 +684,9 @@ export default function CanteenHubPage() {
         onSave={(amount) => limitMutation.mutate(amount)}
       />
 
-      {activeCard?.bank_link ? (
+      {canManageCanteen && activeCard?.bank_link ? (
         <UnlinkConfirmDialog
-          isOpen={isUnlinkDialogOpen}
+          isOpen={canManageCanteen && isUnlinkDialogOpen}
           cardCode={activeCard.card_code}
           studentName={activeCard.student.full_name}
           bankName={activeCard.bank_link.bank_name}

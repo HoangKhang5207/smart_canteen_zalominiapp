@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useSetAtom } from "jotai";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -15,8 +15,9 @@ import { BottomNav } from "@/components/bottom-nav";
 import { ProductImage } from "@/components/product-image";
 import { ErrorState, LoadingState } from "@/components/state-views";
 import {
-  MAX_ITEM_QUANTITY,
   addCartItem,
+  getMaxAddableQuantity,
+  isProductInStock,
 } from "@/features/cart/cart-logic";
 import { cartItemsAtom } from "@/features/cart/store";
 import { fetchProduct } from "@/features/menu/api";
@@ -33,6 +34,10 @@ export default function ProductDetailPage() {
   const productId = Number(id);
   const isValidId = Number.isInteger(productId) && productId > 0;
 
+  useEffect(() => {
+    setQuantity(1);
+  }, [productId]);
+
   const productQuery = useQuery({
     queryKey: ["product", productId],
     queryFn: () => fetchProduct(productId),
@@ -44,13 +49,21 @@ export default function ProductDetailPage() {
     (productQuery.error instanceof ApiError &&
       productQuery.error.status === 404);
 
+  const maxAddable = productQuery.data
+    ? getMaxAddableQuantity(productQuery.data)
+    : 0;
+  const inStock = productQuery.data
+    ? isProductInStock(productQuery.data)
+    : false;
+  const effectiveQty = maxAddable > 0 ? Math.min(maxAddable, quantity) : 1;
+
   const handleAddToCart = () => {
-    if (!productQuery.data || !productQuery.data.is_available) {
+    if (!productQuery.data || !inStock || maxAddable <= 0) {
       return;
     }
-    setCartItems((prev) => addCartItem(prev, productQuery.data, quantity));
+    setCartItems((prev) => addCartItem(prev, productQuery.data, effectiveQty));
     openSnackbar({
-      text: `Đã thêm ${quantity} × "${productQuery.data.name}" vào giỏ`,
+      text: `Đã thêm ${effectiveQty} × "${productQuery.data.name}" vào giỏ`,
       duration: 1800,
     });
     navigate("/cart");
@@ -102,12 +115,17 @@ export default function ProductDetailPage() {
                   {productQuery.data.name}
                 </h1>
                 <span
-                  className={`shrink-0 inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium ${productQuery.data.is_available
+                  className={`shrink-0 inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium ${inStock
                     ? "bg-brand-100 text-brand-900"
                     : "bg-gray-200 text-gray-700"
                     }`}
                 >
-                  {productQuery.data.is_available ? "Còn món" : "Hết món"}
+                  {!inStock
+                    ? "Hết món"
+                    : productQuery.data.stock_quantity !== null &&
+                        productQuery.data.stock_quantity !== undefined
+                      ? `Còn ${productQuery.data.stock_quantity} phần`
+                      : "Còn món"}
                 </span>
               </div>
 
@@ -120,17 +138,17 @@ export default function ProductDetailPage() {
                   "Chưa có mô tả chi tiết cho món ăn này."}
               </p>
 
-              {productQuery.data.is_available ? (
+              {inStock ? (
                 <div className="pt-3 border-t border-gray-100 space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-gray-700">
-                      Số lượng (tối đa {MAX_ITEM_QUANTITY})
+                      Số lượng (tối đa {maxAddable})
                     </span>
                     <div className="inline-flex items-center gap-3">
                       <button
                         type="button"
-                        onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                        disabled={quantity <= 1}
+                        onClick={() => setQuantity(Math.max(1, effectiveQty - 1))}
+                        disabled={effectiveQty <= 1}
                         aria-label="Giảm số lượng"
                         className="w-10 h-10 rounded-lg border border-gray-300 text-base font-bold text-gray-700 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-brand-700"
                       >
@@ -140,16 +158,14 @@ export default function ProductDetailPage() {
                         aria-live="polite"
                         className="w-6 text-center text-sm font-bold text-gray-900"
                       >
-                        {quantity}
+                        {effectiveQty}
                       </span>
                       <button
                         type="button"
                         onClick={() =>
-                          setQuantity((q) =>
-                            Math.min(MAX_ITEM_QUANTITY, q + 1),
-                          )
+                          setQuantity(Math.min(maxAddable, effectiveQty + 1))
                         }
-                        disabled={quantity >= MAX_ITEM_QUANTITY}
+                        disabled={effectiveQty >= maxAddable}
                         aria-label="Tăng số lượng"
                         className="w-10 h-10 rounded-lg border border-gray-300 text-base font-bold text-gray-700 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-brand-700"
                       >
@@ -164,7 +180,7 @@ export default function ProductDetailPage() {
                     onClick={handleAddToCart}
                   >
                     Thêm vào giỏ ·{" "}
-                    {formatVnd(productQuery.data.price * quantity)}
+                    {formatVnd(productQuery.data.price * effectiveQty)}
                   </Button>
                 </div>
               ) : (

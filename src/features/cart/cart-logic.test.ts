@@ -5,6 +5,8 @@ import {
   addCartItem,
   computeCartFingerprint,
   getCartTotals,
+  getMaxAddableQuantity,
+  isProductInStock,
   removeCartItem,
   updateCartQuantity,
 } from "./cart-logic";
@@ -100,5 +102,33 @@ describe("cart-logic (AC-03)", () => {
     expect(computeCartFingerprint(cart1, "Ít cơm")).not.toBe(
       computeCartFingerprint(cart2, "Ít cơm"),
     );
+  });
+
+  it("caps cart quantities by tracked stock_quantity and blocks out-of-stock products", () => {
+    const lowStockProduct: Product = {
+      ...availableProduct,
+      id: 99,
+      stock_quantity: 3,
+      low_stock_threshold: 5,
+      is_in_stock: true,
+    };
+    const zeroStockProduct: Product = {
+      ...availableProduct,
+      id: 100,
+      stock_quantity: 0,
+      is_in_stock: false,
+    };
+
+    expect(getMaxAddableQuantity(lowStockProduct)).toBe(3);
+    expect(isProductInStock(lowStockProduct)).toBe(true);
+    expect(getMaxAddableQuantity(zeroStockProduct)).toBe(0);
+    expect(isProductInStock(zeroStockProduct)).toBe(false);
+
+    expect(addCartItem([], zeroStockProduct, 1)).toEqual([]);
+    const added = addCartItem([], lowStockProduct, 10);
+    expect(added[0].quantity).toBe(3);
+
+    const updated = updateCartQuantity(added, lowStockProduct.id, 9);
+    expect(updated[0].quantity).toBe(3);
   });
 });

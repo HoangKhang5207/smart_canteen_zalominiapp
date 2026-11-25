@@ -80,6 +80,12 @@ describe("order payment helpers", () => {
     const timeout = new ApiError("Quá thời gian", 504, undefined, "GATEWAY_TIMEOUT");
     expect(formatPaymentError(timeout, "Fallback")).toContain("tránh trừ tiền hai lần");
 
+    const stockErr = new ApiError("Hết tồn kho", 422, undefined, "INSUFFICIENT_STOCK");
+    expect(formatPaymentError(stockErr, "Fallback")).toContain("giảm số lượng");
+
+    const parentRoleErr = new ApiError("Chỉ phụ huynh", 403, undefined, "PARENT_ROLE_REQUIRED");
+    expect(formatPaymentError(parentRoleErr, "Fallback")).toContain("Phụ huynh");
+
     expect(formatPaymentError(new Error("Generic error"), "Fallback")).toBe("Generic error");
     expect(formatPaymentError(null, "Fallback")).toBe("Fallback");
   });

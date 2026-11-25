@@ -8,6 +8,7 @@ import { EmptyState, ErrorState, LoadingState } from "@/components/state-views";
 import { ZaloPhoneLoginPanel } from "@/components/zalo-phone-login";
 import { authHydratedAtom, currentUserAtom } from "@/features/auth/store";
 import { fetchPaginatedMyOrders } from "@/features/orders/api";
+import { getPaymentBadgeClass } from "@/features/orders/payment";
 import { getOrderStatusMeta } from "@/features/orders/status";
 import { formatVnd } from "@/lib/format";
 
@@ -89,11 +90,20 @@ export default function OrdersPage() {
                         <span className="font-mono text-sm font-bold text-gray-900">
                           {order.code}
                         </span>
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${statusMeta.badgeClass}`}
-                        >
-                          {statusMeta.label}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                          {order.payment_status ? (
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border ${getPaymentBadgeClass(order.payment_status)}`}
+                            >
+                              {order.payment_status_label || order.payment_status}
+                            </span>
+                          ) : null}
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${statusMeta.badgeClass}`}
+                          >
+                            {statusMeta.label}
+                          </span>
+                        </div>
                       </div>
 
                       <p className="text-xs text-gray-600 truncate">
