@@ -29,7 +29,9 @@ CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "3000"]
 FROM deps AS builder
 
 ARG VITE_API_BASE_URL=http://localhost:8000/api/v1
+ARG VITE_DEMO_PHONE_LOGIN=true
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+ENV VITE_DEMO_PHONE_LOGIN=${VITE_DEMO_PHONE_LOGIN}
 
 COPY . .
 RUN npx tsc --noEmit && npm run build

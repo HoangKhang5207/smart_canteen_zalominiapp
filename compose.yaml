@@ -1,3 +1,9 @@
+# =============================================================================
+# Smart Canteen Mini App — Docker Compose (Mode 2: Dev & Production-like)
+#   - Khoi chay Dev:  Copy-Item .env.docker.example .env && docker compose up -d --build
+#   - Khoi chay Prod: docker compose -f compose.yaml -f compose.prod.yaml up -d --build
+#   - Truy cap:       http://localhost:3000 (hoac http://localhost:${MINIAPP_PORT})
+# =============================================================================
 services:
   miniapp:
     build:
@@ -6,12 +12,14 @@ services:
       target: ${BUILD_TARGET:-dev}
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000/api/v1}
+        VITE_DEMO_PHONE_LOGIN: ${VITE_DEMO_PHONE_LOGIN:-true}
     restart: unless-stopped
     env_file:
       - path: .env
         required: false
     environment:
       VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000/api/v1}
+      VITE_DEMO_PHONE_LOGIN: ${VITE_DEMO_PHONE_LOGIN:-true}
     ports:
       - "${MINIAPP_PORT:-3000}:3000"
     volumes:

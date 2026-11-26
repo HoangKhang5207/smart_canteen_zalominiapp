@@ -6,6 +6,7 @@ services:
       target: production
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000/api/v1}
+        VITE_DEMO_PHONE_LOGIN: ${VITE_DEMO_PHONE_LOGIN:-false}
     ports: !override
       - "${MINIAPP_PORT:-3000}:8080"
     volumes: !reset []
