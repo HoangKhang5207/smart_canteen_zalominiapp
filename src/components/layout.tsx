@@ -25,6 +25,7 @@ import CanteenHubPage from "@/pages/canteen";
 import CartPage from "@/pages/cart";
 import LimitHistoryPage from "@/pages/limit-history";
 import MenuPage from "@/pages/menu";
+import NotificationsPage from "@/pages/notifications";
 import OrderDetailPage from "@/pages/order-detail";
 import OrdersPage from "@/pages/orders";
 import ProductDetailPage from "@/pages/product-detail";
@@ -96,6 +97,7 @@ const Layout = () => {
                 <Route path="/cart" element={<CartPage />} />
                 <Route path="/orders" element={<OrdersPage />} />
                 <Route path="/orders/:id" element={<OrderDetailPage />} />
+                <Route path="/notifications" element={<NotificationsPage />} />
               </AnimationRoutes>
             </ZMPRouter>
           </AuthBootstrap>

@@ -89,6 +89,8 @@ export default function BankLinkOtpPage() {
     },
     onSuccess: (updatedCard) => {
       void queryClient.invalidateQueries({ queryKey: ["canteen-cards"] });
+      void queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      void queryClient.invalidateQueries({ queryKey: ["notifications-unread"] });
       setDraft(null);
       setSession(null);
       setSuccessBanner(

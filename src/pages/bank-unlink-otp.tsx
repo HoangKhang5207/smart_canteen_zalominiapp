@@ -105,6 +105,8 @@ export default function BankUnlinkOtpPage() {
       void queryClient.invalidateQueries({ queryKey: ["canteen-cards"] });
       void queryClient.invalidateQueries({ queryKey: ["canteen-card-orders"] });
       void queryClient.invalidateQueries({ queryKey: ["canteen-limit-logs"] });
+      void queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      void queryClient.invalidateQueries({ queryKey: ["notifications-unread"] });
       setSession(null);
       setUnlinkedInfo(completedSummary);
     },

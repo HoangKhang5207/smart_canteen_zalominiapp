@@ -8,7 +8,11 @@ import { PaginationBar } from "@/components/pagination-bar";
 import { ProductImage } from "@/components/product-image";
 import { EmptyState, ErrorState, LoadingState } from "@/components/state-views";
 import { currentUserAtom } from "@/features/auth/store";
-import { addCartItem, isProductInStock } from "@/features/cart/cart-logic";
+import {
+  addCartItem,
+  getMaxAddableQuantity,
+  isProductInStock,
+} from "@/features/cart/cart-logic";
 import { cartItemsAtom, cartTotalsAtom } from "@/features/cart/store";
 import { fetchCategories, fetchPaginatedProducts } from "@/features/menu/api";
 import type { Category, Product } from "@/features/menu/types";
@@ -145,6 +149,7 @@ export default function MenuPage() {
   const navigate = useNavigate();
   const { openSnackbar } = useSnackbar();
   const currentUser = useAtomValue(currentUserAtom);
+  const cartItems = useAtomValue(cartItemsAtom);
   const setCartItems = useSetAtom(cartItemsAtom);
   const { totalQuantity, estimatedAmount } = useAtomValue(cartTotalsAtom);
 
@@ -205,6 +210,23 @@ export default function MenuPage() {
   };
 
   const handleAddProduct = (product: Product) => {
+    const existingQty =
+      cartItems.find((entry) => entry.product.id === product.id)?.quantity ?? 0;
+    const maxAllowed = getMaxAddableQuantity(product);
+    if (maxAllowed <= 0) {
+      openSnackbar({
+        text: `"${product.name}" hiện đã hết hàng.`,
+        duration: 1800,
+      });
+      return;
+    }
+    if (existingQty >= maxAllowed) {
+      openSnackbar({
+        text: `Đã đạt số lượng tối đa (${maxAllowed} phần) cho "${product.name}".`,
+        duration: 2000,
+      });
+      return;
+    }
     setCartItems((prev) => addCartItem(prev, product, 1));
     openSnackbar({
       text: `Đã thêm "${product.name}" vào giỏ hàng`,

@@ -95,6 +95,8 @@ export default function CanteenHubPage() {
       setIsLimitSheetOpen(false);
       void queryClient.invalidateQueries({ queryKey: ["canteen-cards"] });
       void queryClient.invalidateQueries({ queryKey: ["canteen-limit-logs"] });
+      void queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      void queryClient.invalidateQueries({ queryKey: ["notifications-unread"] });
       openSnackbar({
         text: `Đã cập nhật hạn mức ${formatVnd(updatedCard.spending_limit.daily_limit)}/ngày`,
         duration: 2200,
@@ -131,6 +133,8 @@ export default function CanteenHubPage() {
       void queryClient.invalidateQueries({ queryKey: ["products"] });
       void queryClient.invalidateQueries({ queryKey: ["product"] });
       void queryClient.invalidateQueries({ queryKey: ["canteen-pos-sample-products"] });
+      void queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      void queryClient.invalidateQueries({ queryKey: ["notifications-unread"] });
       openSnackbar({
         text: `Quẹt thẻ thành công (${order.code})`,
         duration: 2200,
@@ -203,6 +207,8 @@ export default function CanteenHubPage() {
       queryClient.removeQueries({ queryKey: ["canteen-limit-logs"] });
       queryClient.removeQueries({ queryKey: ["my-orders"] });
       queryClient.removeQueries({ queryKey: ["order"] });
+      queryClient.removeQueries({ queryKey: ["notifications"] });
+      queryClient.removeQueries({ queryKey: ["notifications-unread"] });
       openSnackbar({
         text: "Đã đăng xuất tài khoản.",
         duration: 2000,
@@ -413,8 +419,10 @@ export default function CanteenHubPage() {
                   {!isCardActive ? (
                     <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2.5">
                       Thẻ đang ở trạng thái <strong>{activeCard.status}</strong>{" "}
-                      nên tạm dừng chi tiêu và điều chỉnh hạn mức. Bạn vẫn có
-                      thể hủy liên kết ngân hàng bên dưới.
+                      nên tạm dừng chi tiêu và điều chỉnh hạn mức.
+                      {canManageCanteen
+                        ? " Bạn vẫn có thể hủy liên kết ngân hàng bên dưới."
+                        : " Vui lòng liên hệ phụ huynh hoặc nhà trường."}
                     </p>
                   ) : null}
 
