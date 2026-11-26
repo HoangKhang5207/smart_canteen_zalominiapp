@@ -20,7 +20,8 @@ export function BottomNav() {
     refetchInterval: 20_000,
   });
 
-  const unreadBadge = formatUnreadBadge(unreadQuery.data ?? 0);
+  const unreadCount = unreadQuery.data ?? 0;
+  const unreadBadge = formatUnreadBadge(unreadCount);
 
   const pathname = location.pathname;
   const isMenu = pathname === "/" || pathname.startsWith("/products");
@@ -34,6 +35,9 @@ export function BottomNav() {
       aria-label="Điều hướng chính"
       className="fixed bottom-0 inset-x-0 z-30 bg-white border-t border-gray-200 shadow-sm"
     >
+      <span className="sr-only" aria-live="polite" aria-atomic="true">
+        {currentUser && unreadCount > 0 ? `Bạn có ${unreadCount} thông báo chưa đọc` : ""}
+      </span>
       <div className="max-w-2xl mx-auto grid grid-cols-5 h-14">
         <button
           type="button"
@@ -93,6 +97,7 @@ export function BottomNav() {
           type="button"
           onClick={() => navigate("/notifications")}
           aria-current={isNotifications ? "page" : undefined}
+          aria-label={unreadBadge ? `Thông báo (${unreadBadge} chưa đọc)` : "Thông báo"}
           className={`relative min-w-0 flex flex-col items-center justify-center gap-0.5 text-[11px] font-medium whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-brand-700 ${
             isNotifications ? "text-brand-700 font-semibold" : "text-gray-600"
           }`}
@@ -100,7 +105,7 @@ export function BottomNav() {
           <span>Thông báo</span>
           {unreadBadge ? (
             <span
-              aria-label={`${unreadBadge} thông báo chưa đọc`}
+              aria-hidden="true"
               className="absolute top-1 right-1 inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full text-[9px] font-bold bg-red-600 text-white leading-none"
             >
               {unreadBadge}
